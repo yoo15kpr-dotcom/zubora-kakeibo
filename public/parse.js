@@ -54,21 +54,30 @@ const STORE_HINTS=[["食費",/ローソン|ファミリーマート|ファミマ
 ["交通",/ENEOS|エネオス|出光|コスモ石油|パーキング|駐車/i]];
 const yenNum=s=>{s=s.replace(/[,，]/g,"").replace(/\.(?=\d{3}(?!\d))/g,"");const n=Math.round(+s);return Number.isFinite(n)?n:0};
 export function receiptFromText(raw){
-  let t=hankaku(String(raw||"")).replace(/[￥\\]/g,"¥").replace(/[：]/g,":");
+  let t=hankaku(String(raw||"")).replace(/[￥\\]/g,"¥").replace(/[：]/g,":").replace(/(?<=\d[,.]?\d*)[oO](?=[\doO,.]*)/g,"0");
+  const rawLines=String(raw||"").split(/\r?\n/);
   // 日本語どうしの間の空白を詰める（数字の前後の空白は残す）
   for(let i=0;i<3;i++)t=t.replace(/([^\x00-\x7F])[ \t　]+(?=[^\x00-\x7F])/g,"$1");
   const lines=t.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   // 合計: 強い言葉→弱い言葉の順に探し、同じ強さなら後ろにあるものを採る。「小計」などは除外
-  let total=0;
+  let total=0,totalYen=false;
   const amountAfter=/[^\d¥]{0,8}¥?\s*(\d{1,3}(?:[.,]\d{3})+|\d+)(?!\s*点)/g;
   for(const w of TOTAL_WORDS){
     const re=new RegExp("("+w.source+")"+amountAfter.source,"g");let m,found=0;
     for(const l of lines.length>1?lines:[t]){
       if(NOT_TOTAL.test(l.replace(w," ")))continue; // 例:「小計」「合計点数」の行は使わない（1行に全部ある場合は下で判定）
-      re.lastIndex=0;while(m=re.exec(l)){if(!NOT_TOTAL.test(m[0])){const n=yenNum(m[2]);if(n>0)found=n}}
+      re.lastIndex=0;while(m=re.exec(l)){if(!NOT_TOTAL.test(m[0])){const n=yenNum(m[2]);if(n>0){found=n;totalYen=m[0].includes("¥")}}}
     }
-    if(!found&&lines.length<=1){re.lastIndex=0;while(m=re.exec(t)){const pre=t.slice(Math.max(0,m.index-2),m.index);if(!/小|総/.test(pre)||/総/.test(m[1])){const n=yenNum(m[2]);if(n>0)found=n}}}
+    if(!found&&lines.length<=1){re.lastIndex=0;while(m=re.exec(t)){const pre=t.slice(Math.max(0,m.index-2),m.index);if(!/小|総/.test(pre)||/総/.test(m[1])){const n=yenNum(m[2]);if(n>0){found=n;totalYen=m[0].includes("¥")}}}}
     if(found){total=found;break}
+  }
+  // 先頭の桁が抜ける読み違い（¥179,000 → 79,000。「¥1」がまとめて崩れる）を、後ろの支払・預りの金額で補う。
+  // 他の行には¥があるのに合計にだけ¥がない＝崩れた形跡があるときに限る（合計¥500・預り¥1,500 を誤って直さない）
+  if(total&&!totalYen&&/¥/.test(t)){
+    const pays=[],ti=lines.findIndex(l=>TOTAL_WORDS[0].test(l)&&!NOT_TOTAL.test(l.replace(TOTAL_WORDS[0]," "))&&l.includes(String(total).slice(-3)));
+    lines.forEach((l,i)=>{if(/預り|預かり|対象|PayPay|クレジット|カード|電子マネー|現金|お支払|支払/i.test(l)||(ti>=0&&i>ti&&i<=ti+8))for(const x of l.match(/\d{1,3}(?:[.,]\d{3})+|\d{3,}/g)||[])pays.push(yenNum(x))});
+    const better=pays.filter(n=>n>total&&String(n).endsWith(String(total))).sort((a,b)=>a-b)[0];
+    if(better)total=better;
   }
   // 日付
   let date=null,m;
@@ -78,12 +87,16 @@ export function receiptFromText(raw){
   if(!date&&(m=t.match(/(?<!\d)(\d{2})[\/.](\d{1,2})[\/.](\d{1,2})(?!\d)/)))date=ok(+m[1],+m[2],+m[3]);
   // 店名: 先頭から、電話・日付・番号・金額でない最初の行
   let store="";
-  for(const l of lines.length>1?lines:[t.split(/\s+/)[0]||""]){
-    if(/電話|TEL|tel|〒|レジ|No\.|[#№]|^\d|¥|年.*月|\/\d|領収|レシート/.test(l))continue;
+  for(const r of rawLines){const sm=hankaku(r).match(/([^\s\d¥\\:]{1,12})\s*店\s*(?:TEL|tel|電話|☎)/);if(sm){store=sm[1]+"店";break}}
+  const garbled=i=>{const w=(rawLines[i]||"").trim().split(/\s+/).filter(Boolean);return w.length>=4&&w.filter(x=>x.length==1).length/w.length>=.7};
+  if(!store)for(const [i,l] of (lines.length>1?lines:[t.split(/\s+/)[0]||""]).entries()){
+    if(lines.length>1&&garbled(rawLines.findIndex(r=>r.trim()&&r.replace(/\s+/g,"")===l.replace(/\s+/g,""))))continue;
+    if(/電話|TEL|tel|〒|レジ|No\.|[#№]|^\d|¥|年.*月|\/\d|領収|レシート|\d{2,}\s*円?$/.test(l))continue;
     if(l.replace(/[\s\d\p{P}\p{S}]/gu,"").length>=2){store=l.replace(/\s+/g,"").slice(0,30);break}
   }
+  // カテゴリ: 既知の店・品名のキーワード → 店名から判定。誤読の多い全文には汎用の判定を使わない
   let category="その他";
   for(const[c,r]of STORE_HINTS)if(r.test(t)){category=c;break}
-  if(category=="その他")category=cat(t);
+  if(category=="その他"&&store)category=cat(store);
   return{store,total,date,category};
 }

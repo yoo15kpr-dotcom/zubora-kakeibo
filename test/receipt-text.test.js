@@ -72,3 +72,27 @@ test("店名とカテゴリ", () => {
   assert.deepEqual([receiptFromText(OCR_RAMEN).store, receiptFromText(OCR_RAMEN).category], ["ラーメン一番", "食費"]);
   assert.equal(receiptFromText(OCR_CONVENI).category, "食費"); // 店名は誤読でも、品名（おにぎり）から判定
 });
+
+// 実物のレシート写真を Tesseract.js で読んだ出力の一部（ロゴ部分の誤読・「¥1」の欠落・「預り」の誤読を含む）。
+// 個人名などは除いている
+const OCR_REAL_INTERIOR = `N に へ ュ jnrcrior 際
+か 岡崎 店 TEL:0564-64-0580 いい 詳
+る 定休 日 : 木曜 日 ン J
+記 ら へ 2026 年 10 月 04 日 (日 )18:21 No.00801 “る 本
+0\\26,900 内 4 個 \\107,.600 て
+多 小 誠 訓 果 \\194,500 、
+S 謙 ( 値 引 合計 =\\155500) 、
+( 税 合計 \\16,272) 。
+合 計 79.000 引 。 詳 叶
+(10% 課 税 庁 象 "yi79.000)
+( 税 匠 10% \\16,272)
+お 買上 金額 は 上 記 の と お り で す 。 。 ・ ヽ \\ 民
+お 聞 り 。 \\179,O00 ト ジン`;
+
+test("実物: 先頭の1が欠けた合計を後ろの金額で補う／支店名／日付", () => {
+  assert.deepEqual(receiptFromText(OCR_REAL_INTERIOR), { store: "岡崎店", total: 179000, date: "2026-10-04", category: "その他" });
+});
+
+test("合計に¥が付いていれば、預りの金額で書き換えない", () => {
+  assert.equal(receiptFromText("ローソン\n合計 ¥500\nお預り ¥1,500\nお釣り ¥1,000").total, 500);
+});
