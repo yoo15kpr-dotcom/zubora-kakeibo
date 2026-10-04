@@ -113,6 +113,14 @@ iPhone ではホーム画面に追加したアプリと Safari の保存領域�
 - 繰り返し: `毎月N日` / `隔週` / `毎週`（曜日指定可: 隔週月曜）。登録月以降のみ表示、今月分は未来日でも「使った額」に含める
 - カテゴリ: キーワードで自動判定
 
+## Vercel への公開
+
+`vercel.json` の設定で、Vercel が `npm ci` → `npm run vendor:ocr`（文字認識の部品のコピー）を実行し、`public/` をそのまま公開します。サーバー版のコード（`server.js`・`lib/`）は `.vercelignore` で除外しています。
+
+1. https://vercel.com に GitHub でログイン（Hobby プラン＝無料・個人の非商用利用）
+2. 「Add New… → Project」でこのリポジトリを Import し、Project Name を決めて Deploy（URL は `<Project Name>.vercel.app`）
+3. 以後は main に push するたびに自動で公開されます
+
 ## GitHub Pages への公開
 
 `gh-pages` ブランチに `public/`（`npm install` 後の `public/vendor/` を含む）をそのまま置いています。API キーを使わない構成なので、サーバーは不要です。

@@ -1,0 +1,5 @@
+# Vercel では静的ファイル（public/）だけを公開する。サーバー版のコードは送らない
+server.js
+lib/
+test/
+dist-pages/
