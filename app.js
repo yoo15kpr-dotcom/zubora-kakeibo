@@ -128,6 +128,13 @@ async function shrink(f){
     return{mediaType:f.type,image:u.slice(u.indexOf(",")+1)};
   }
 }
+// 文字認識の前処理: 白黒にしてコントラストを上げる（実物のレシートで合計の誤読が減った）。
+// canvas の filter は端末によって効かないので、画素を直接計算する
+function prep(c){
+  const x=c.getContext("2d"),im=x.getImageData(0,0,c.width,c.height),d=im.data;
+  for(let i=0;i<d.length;i+=4){let y=(d[i]*.299+d[i+1]*.587+d[i+2]*.114-128)*1.6+128;y=y<0?0:y>255?255:y;d[i]=d[i+1]=d[i+2]=y}
+  x.putImageData(im,0,0);return c;
+}
 // 端末内の文字認識（Tesseract.js）。初回だけ部品（数MB）を読み込む
 let ocrWorker=null;
 function loadScript(src){return new Promise((ok,ng)=>{const s=document.createElement("script");s.src=src;s.onload=ok;s.onerror=ng;document.head.appendChild(s)})}
@@ -138,7 +145,7 @@ async function localOcr(f,box){
       logger:m=>{if(m.status=="recognizing text")box.textContent="文字を読んでるよ… "+Math.round(m.progress*100)+"%"}});
   }
   const w=await ocrWorker;
-  const {data}=await w.recognize(await toCanvas(f,2400).catch(()=>f));
+  const {data}=await w.recognize(await toCanvas(f,2400).then(prep).catch(()=>f));
   return receiptFromText(data.text);
 }
 // 読み取り結果の確認。店名と金額はその場で直せる
