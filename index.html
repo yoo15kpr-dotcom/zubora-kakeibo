@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ズボラ家計簿</title>
+<meta name="theme-color" content="#eaf2f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15201f" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ズボラ家計簿">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+<div id="v1">
+<h1>🍵 ズボラ家計簿</h1>
+
+<section class="card">
+  <div class="row"><span class="sub" id="month"></span><span class="sub">目標 <button class="goal" id="goal"></button><input class="goalin" id="goalin" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-label="今月の目標（使っていい金額）" hidden></span></div>
+  <div class="sub" id="lbl">目標まであと</div>
+  <div class="big ok" id="left">—</div>
+  <div class="bar"><i id="fill"></i><b id="pace"></b></div>
+  <div class="row sub" style="margin-top:6px"><span id="spent"></span><span id="perday"></span></div>
+  <div class="bubble" id="cheer">思ったこと、そのまま話しかけてね。</div>
+</section>
+
+<section class="card">
+  <div class="inp">
+    <input id="txt" placeholder="例：ランチ850円" autocomplete="off" enterkeyhint="send">
+    <button class="btn mic" id="mic" aria-label="音声入力">🎤</button>
+    <button class="btn" id="add">記録</button>
+  </div>
+  <div class="sub" style="margin-top:12px">よく使う（タップで1件追加）</div>
+  <div class="chips" id="chips"></div>
+  <div class="chips"><button id="favadd">☆ 今の入力をリストに入れる</button><button id="favedit">✎ 編集</button></div>
+  <button class="btn rc" id="rcpt" hidden>📷 レシートを読み込む</button>
+  <input type="file" id="file" accept="image/*" hidden>
+  <div class="rcbox" id="rc" hidden></div>
+</section>
+
+</div>
+<div id="v2" hidden>
+  <div class="row" style="align-items:center"><button class="x" id="pm" aria-label="前の月">◀</button><h1 id="h2" style="margin:4px 0 12px"></h1><button class="x" id="nm" aria-label="次の月">▶</button></div>
+  <section class="card"><div class="sub">今月使った金額</div><div class="big" id="mt">—</div>
+    <div class="row sub"><span id="mc"></span><span id="ma"></span></div></section>
+  <section class="card"><div class="sub">カテゴリ別</div><div id="cats"></div></section>
+  <section class="card"><div class="sub">カレンダー（日をタップで絞り込み）</div><div class="cal" id="cal"></div></section>
+  <section class="card"><div class="sub" style="margin-bottom:4px" id="lh">記録一覧</div><div id="list"></div></section>
+</div>
+</main>
+<nav><button id="t1" class="on">✏️ 入力</button><button id="t2">📊 今月</button></nav>
+<script type="module" src="app.js"></script>
+</body>
+</html>
