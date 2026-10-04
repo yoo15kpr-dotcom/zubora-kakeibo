@@ -1,4 +1,5 @@
 import { CATS, cat, amount, normalize, split, receiptFromText, hankaku } from "./parse.js";
+import { exportData, importData, earliestOffset } from "./data.js";
 
 const KEY="zubora_v1";
 let S={goal:50000,items:[],recur:[]};
@@ -47,7 +48,9 @@ function render(msg){
 }
 let selDay=null,viewOff=0;
 function renderMonth(s){
-  $("h2").textContent=s.y+"年"+(s.mo+1)+"月";$("pm").disabled=viewOff<=0;$("pm").style.opacity=viewOff<=0?.25:1;
+  const minOff=Math.max(-60,earliestOffset(S));
+  $("h2").textContent=s.y+"年"+(s.mo+1)+"月";$("pm").disabled=viewOff<=minOff;$("pm").style.opacity=viewOff<=minOff?.25:1;
+  $("mtl").textContent=s.off==0?"今月使った金額":"この月に使った金額";
   $("mt").textContent=yen(s.spent);
   $("mc").textContent=s.items.length+"件";
   $("ma").textContent="1日平均 "+yen(s.spent/Math.max(1,s.day));
@@ -83,9 +86,28 @@ function renderMonth(s){
     L.appendChild(el)})}
 }
 function tab(n){$("v1").hidden=n!=1;$("v2").hidden=n!=2;$("t1").className=n==1?"on":"";$("t2").className=n==2?"on":"";window.scrollTo(0,0)}
-$("pm").onclick=()=>{if(viewOff>0){viewOff--;selDay=null;renderMonth(stats(viewOff))}};
+// 記録のある一番古い月まで戻れる（最大5年）
+$("pm").onclick=()=>{if(viewOff>Math.max(-60,earliestOffset(S))){viewOff--;selDay=null;renderMonth(stats(viewOff))}};
 $("nm").onclick=()=>{if(viewOff<24){viewOff++;selDay=null;renderMonth(stats(viewOff))}};
 $("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);
+
+// バックアップ: 書き出しは共有シート（iPhone は「ファイルに保存」できる）かダウンロード。読み込みは今のデータに足す
+const bkMsg=t=>{$("bkmsg").textContent=t};
+$("bkout").onclick=async()=>{
+  const d=new Date(),name="zubora-kakeibo-"+d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")+".json";
+  const blob=new Blob([exportData(S,d)],{type:"application/json"});
+  try{const f=new File([blob],name,{type:"application/json"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:"ズボラ家計簿のバックアップ"});bkMsg("書き出したよ。");return}}
+  catch(e){if(e&&e.name=="AbortError")return}
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  bkMsg("「"+name+"」を書き出したよ。");
+};
+$("bkin").onclick=()=>$("bkfile").click();
+$("bkfile").onchange=async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  try{const r=importData(S,await f.text());S=Object.assign(S,r.data);save();renderFavs();render();
+    const n=r.added.items+r.added.recur;bkMsg(n||r.added.favs?"読み込んだよ。記録 "+r.added.items+"件、繰り返し "+r.added.recur+"件、よく使う "+r.added.favs+"件を足したよ。":"新しい記録はなかったよ（もう入ってた）。")}
+  catch(err){bkMsg("このファイルは読み込めなかったよ。書き出したバックアップ（.json）を選んでね。")}
+};
 
 // レシート読み取り: サーバーの /api/receipt（APIキーはサーバー側）。使えるときだけ📷を出す
 const RCPT_API="api/receipt",KKEY="zubora_key";
@@ -115,10 +137,10 @@ function askKey(msg){
   acts.append(ok,no);box.append(p,inp,acts);inp.focus();
 }
 // 画像を長辺 max px に縮めた canvas にする
-async function toCanvas(f,max){
-  const b=await createImageBitmap(f),k=Math.min(1,max/Math.max(b.width,b.height));
-  const c=document.createElement("canvas");c.width=Math.round(b.width*k);c.height=Math.round(b.height*k);
-  c.getContext("2d").drawImage(b,0,0,c.width,c.height);b.close&&b.close();return c;
+async function toCanvas(f,max,deg=0){
+  const b=await createImageBitmap(f),k=Math.min(1,max/Math.max(b.width,b.height)),w=Math.round(b.width*k),h=Math.round(b.height*k);
+  const c=document.createElement("canvas");c.width=deg%180?h:w;c.height=deg%180?w:h;
+  const x=c.getContext("2d");x.translate(c.width/2,c.height/2);x.rotate(deg*Math.PI/180);x.drawImage(b,-w/2,-h/2,w,h);b.close&&b.close();return c;
 }
 // API用: 長辺1568pxのJPEGに縮めてから送る
 async function shrink(f){
@@ -138,15 +160,26 @@ function prep(c){
 // 端末内の文字認識（Tesseract.js）。初回だけ部品（数MB）を読み込む
 let ocrWorker=null;
 function loadScript(src){return new Promise((ok,ng)=>{const s=document.createElement("script");s.src=src;s.onload=ok;s.onerror=ng;document.head.appendChild(s)})}
+let ocrLabel="文字を読んでるよ…";
 async function localOcr(f,box){
   if(!ocrWorker){
     if(!window.Tesseract)await loadScript(OCR+"tesseract.min.js");
     ocrWorker=window.Tesseract.createWorker("jpn",1,{workerPath:OCR+"worker.min.js",corePath:OCR+"core",langPath:OCR+"lang",gzip:true,workerBlobURL:false,
-      logger:m=>{if(m.status=="recognizing text")box.textContent="文字を読んでるよ… "+Math.round(m.progress*100)+"%"}});
+      logger:m=>{if(m.status=="recognizing text")box.textContent=ocrLabel+" "+Math.round(m.progress*100)+"%"}});
   }
   const w=await ocrWorker;
-  const {data}=await w.recognize(await toCanvas(f,2400).then(prep).catch(()=>f));
-  return receiptFromText(data.text);
+  // まずそのまま読む。合計が見つからなければ、向きを変えて読み直す（横長の写真は横向きに置かれたレシートとみて90°/270°から）
+  let land=false;try{const b=await createImageBitmap(f);land=b.width>b.height;b.close&&b.close()}catch(e){}
+  let best=null;
+  for(const deg of land?[0,90,270,180]:[0,180,90,270]){
+    ocrLabel=deg?"向きを変えて読み直してるよ…":"文字を読んでるよ…";
+    const c=await toCanvas(f,2400,deg).then(prep).catch(()=>null);
+    if(!c){if(deg)break;const {data}=await w.recognize(f);return receiptFromText(data.text)}
+    const r=receiptFromText((await w.recognize(c)).data.text);
+    if(!best||(r.total&&!best.total)||(!best.total&&!best.date&&r.date))best=r;
+    if(r.total)break;
+  }
+  return best;
 }
 // 読み取り結果の確認。店名と金額はその場で直せる
 function showReceipt(r){

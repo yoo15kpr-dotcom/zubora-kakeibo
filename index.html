@@ -45,11 +45,15 @@
 </div>
 <div id="v2" hidden>
   <div class="row" style="align-items:center"><button class="x" id="pm" aria-label="前の月">◀</button><h1 id="h2" style="margin:4px 0 12px"></h1><button class="x" id="nm" aria-label="次の月">▶</button></div>
-  <section class="card"><div class="sub">今月使った金額</div><div class="big" id="mt">—</div>
+  <section class="card"><div class="sub" id="mtl">今月使った金額</div><div class="big" id="mt">—</div>
     <div class="row sub"><span id="mc"></span><span id="ma"></span></div></section>
   <section class="card"><div class="sub">カテゴリ別</div><div id="cats"></div></section>
   <section class="card"><div class="sub">カレンダー（日をタップで絞り込み）</div><div class="cal" id="cal"></div></section>
   <section class="card"><div class="sub" style="margin-bottom:4px" id="lh">記録一覧</div><div id="list"></div></section>
+  <section class="card"><div class="sub">バックアップ（機種変更や念のために）</div>
+    <div class="chips"><button id="bkout">⬇ 書き出す</button><button id="bkin">⬆ 読み込む</button></div>
+    <input type="file" id="bkfile" accept="application/json,.json" hidden>
+    <div class="sub" id="bkmsg" style="margin-top:6px">記録はこのスマホの中だけにあるよ。ときどき書き出しておくと安心。</div></section>
 </div>
 </main>
 <nav><button id="t1" class="on">✏️ 入力</button><button id="t2">📊 今月</button></nav>
