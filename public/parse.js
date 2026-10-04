@@ -48,7 +48,7 @@ export function split(t,now=new Date()){
 // ---- レシートの文字（端末の文字認識の結果や、貼り付けたテキスト）→ {store, total, date, category}
 // 文字認識の癖: 文字の間の空白、¥が「\」、桁区切りの「,」が「.」になる
 const TOTAL_WORDS=[/お?買上合計|お会計|御会計|ご請求額?|請求金額|お支払(?:合計|金額)?|支払合計|総合計|合計金額|合計/,/総額|税込計/];
-const NOT_TOTAL=/小計|対象|内税|消費税|税額|預り|預かり|釣り|つり|現金|点数|割引|値引|ポイント/;
+const NOT_TOTAL=/小計|対象|内税|外税|税合計|消費税|税額|預り|預かり|釣り|つり|現金|点数|割引|値引|ポイント/;
 const STORE_HINTS=[["食費",/ローソン|ファミリーマート|ファミマ|セブン|ミニストップ|デイリーヤマザキ|イオン|西友|ライフ|まいばすけっと|業務スーパー|マクドナルド|すき家|吉野家|松屋|ガスト|サイゼリヤ|スターバックス|ドトール|タリーズ|おにぎり|弁当|ラーメン|餃子|定食|ランチ/],
 ["日用品",/マツモトキヨシ|マツキヨ|ウエルシア|ツルハ|スギ薬局|サンドラッグ|ココカラ|ダイソー|セリア|ニトリ|無印良品|薬局/],
 ["交通",/ENEOS|エネオス|出光|コスモ石油|パーキング|駐車/i]];
@@ -64,11 +64,10 @@ export function receiptFromText(raw){
   const amountAfter=/[^\d¥]{0,8}¥?\s*(\d{1,3}(?:[.,]\d{3})+|\d+)(?!\s*点)/g;
   for(const w of TOTAL_WORDS){
     const re=new RegExp("("+w.source+")"+amountAfter.source,"g");let m,found=0;
+    // 合計の言葉の直前3文字も含めて除外語を見る（「税合計」「値引合計」「合計点数」などを拾わない）
     for(const l of lines.length>1?lines:[t]){
-      if(NOT_TOTAL.test(l.replace(w," ")))continue; // 例:「小計」「合計点数」の行は使わない（1行に全部ある場合は下で判定）
-      re.lastIndex=0;while(m=re.exec(l)){if(!NOT_TOTAL.test(m[0])){const n=yenNum(m[2]);if(n>0){found=n;totalYen=m[0].includes("¥")}}}
+      re.lastIndex=0;while(m=re.exec(l)){const ctx=l.slice(Math.max(0,m.index-3),m.index)+m[0];if(!NOT_TOTAL.test(ctx)&&!/小$|総$/.test(l.slice(Math.max(0,m.index-1),m.index))){const n=yenNum(m[2]);if(n>0){found=n;totalYen=m[0].includes("¥")}}}
     }
-    if(!found&&lines.length<=1){re.lastIndex=0;while(m=re.exec(t)){const pre=t.slice(Math.max(0,m.index-2),m.index);if(!/小|総/.test(pre)||/総/.test(m[1])){const n=yenNum(m[2]);if(n>0){found=n;totalYen=m[0].includes("¥")}}}}
     if(found){total=found;break}
   }
   // 先頭の桁が抜ける読み違い（¥179,000 → 79,000。「¥1」がまとめて崩れる）を、後ろの支払・預りの金額で補う。
