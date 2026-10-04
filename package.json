@@ -9,7 +9,8 @@
     "test": "node --test test/*.test.js",
     "postinstall": "node scripts/vendor-ocr.js",
     "vendor:ocr": "node scripts/vendor-ocr.js",
-    "build:pages": "node scripts/vendor-ocr.js && rm -rf dist-pages && cp -r public dist-pages && touch dist-pages/.nojekyll"
+    "build:pages": "node scripts/vendor-ocr.js && rm -rf dist-pages && cp -r public dist-pages && touch dist-pages/.nojekyll",
+    "publish:pages": "sh scripts/publish-pages.sh"
   },
   "engines": {
     "node": ">=20"
