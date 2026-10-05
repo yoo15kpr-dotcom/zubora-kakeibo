@@ -45,7 +45,7 @@ function render(msg){
   $("perday").textContent=over?"":"1日 "+yen(Math.max(0,s.left)/rem)+" まで";
   $("cheer").textContent=msg||cheerText(s);
   renderMonth(stats(viewOff));
-  if(typeof renderBkDue=="function")renderBkDue();
+  if(typeof renderBkDue=="function"){renderBkDue();renderNote()}
 }
 let selDay=null,viewOff=0;
 function renderMonth(s){
@@ -122,6 +122,19 @@ function renderBkDue(){
 $("bkout").onclick=async()=>{if(await doExport()){$("bkmsg").dataset.fixed="1";bkMsg("書き出したよ。"+lastBkText().replace("最後に書き出した日: ","（")+"）")}};
 $("bkdueok").onclick=async()=>{if(await doExport())$("cheer").textContent="バックアップしたよ。えらい、これで安心〜"};
 $("bkduelater").onclick=()=>{BK.snooze=ymd(new Date());saveBk();renderBkDue()};
+
+// iPhone では Safari とホーム画面のアイコンで保存場所が別（Apple の仕様）。記録が「消えた」ように見えないよう案内する
+const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform=="MacIntel"&&navigator.maxTouchPoints>1);
+const standalone=navigator.standalone===true||(window.matchMedia&&matchMedia("(display-mode: standalone)").matches);
+function renderNote(){
+  let t="";
+  if(isIOS&&!BK.noteOk){
+    if(!standalone)t="📱 ホーム画面のアイコンから開くのがおすすめ。iPhoneでは、Safariとホーム画面のアイコンで記録が別々に保存されるよ（いつも同じほうで開いてね）。";
+    else if(!S.items.length&&!S.recur.length)t="📱 Safariで使っていた記録や「よく使う」は、Safariで「今月」→「⬇ 書き出す」、ここで「⬆ 読み込む」で移せるよ。";
+  }
+  $("iosnote").hidden=!t;if(t)$("iosnotet").textContent=t;
+}
+$("iosnoteok").onclick=()=>{BK.noteOk=true;saveBk();renderNote()};
 $("bkin").onclick=()=>$("bkfile").click();
 $("bkfile").onchange=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
