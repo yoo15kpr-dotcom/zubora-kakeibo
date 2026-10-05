@@ -2,7 +2,7 @@
 
 **公開版**: https://zuborakakeibo.vercel.app/ （スマホで開いて「ホーム画面に追加」）
 
-旧URL（GitHub Pages）: https://yoo15kpr-dotcom.github.io/zubora-kakeibo/ も当面は同じ内容で動いています。記録は URL ごとに別なので、移るときは「書き出す → 読み込む」で移してください。
+旧URL（GitHub Pages）: https://yoo15kpr-dotcom.github.io/zubora-kakeibo/ はアプリを止め、移転のお知らせページにしています（`gh-pages` ブランチ）。そのURLに記録が残っている端末では、お知らせページから書き出して新しいURLで読み込めます。
 
 話し言葉（音声または文字）をそのまま入力すると記録される、ズボラ向けの家計簿。
 目標金額との差と、ゆるい応援の言葉を表示します。データは端末の `localStorage`（キー `zubora_v1`）にだけ保存します。
@@ -125,18 +125,13 @@ iPhone ではホーム画面に追加したアプリと Safari の保存領域�
    - 自動で作られる確認用URL（`〜-<ハッシュ>-<チーム名>.vercel.app` など）は Vercel へのログインが必要。普段は本番URLを使う
 3. 以後は main に push するたびに自動で公開されます
 
-## GitHub Pages への公開
+## GitHub Pages（停止済み）
 
-`gh-pages` ブランチに `public/`（`npm install` 後の `public/vendor/` を含む）をそのまま置いています。API キーを使わない構成なので、サーバーは不要です。
-
-```sh
-npm install
-npm run publish:pages   # dist-pages/ を作って gh-pages ブランチに push する
-```
+`gh-pages` ブランチには移転のお知らせページ（`index.html` / `404.html`）と、前のアプリの Service Worker を解除する `sw.js` だけを置いています。アプリ本体は Vercel で公開します。
 
 ## 更新時の注意
 
-`public/` のファイルを変えたら `sw.js` の `CACHE` の値（`zubora-v1`）を上げると、古いキャッシュが確実に消えます（ネット優先で取得するので、上げなくてもオンライン時は新しい版が表示されます）。
+`public/` のファイルを変えたら `sw.js` の `CACHE` の値（`zubora-vN`）を上げると、古いキャッシュが確実に消えます（ネット優先で取得するので、上げなくてもオンライン時は新しい版が表示されます）。
 
 ## 未実装
 
