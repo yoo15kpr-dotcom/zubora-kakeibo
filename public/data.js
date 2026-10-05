@@ -37,3 +37,23 @@ export function earliestOffset(S,now=new Date()){
   for(const r of S.recur||[])min=Math.min(min,r.start);
   return min-cur;
 }
+
+// 記録のある一番古い月（年*12+月）。記録がなければ null
+export function earliestMonthKey(S){
+  let min=null;
+  for(const i of S.items){const d=new Date(i.ts),k=d.getFullYear()*12+d.getMonth();if(min==null||k<min)min=k}
+  for(const r of S.recur||[])if(min==null||r.start<min)min=r.start;
+  return min;
+}
+
+// 月末のバックアップが必要か。月末の日はその月の分、それ以外の日は先月の分を見る。
+// その月の分を「月末の日以降」に書き出していれば済み。対象の月より前から記録がある場合だけ促す
+export function backupDue(now,lastExportTs,earliestKey){
+  const Y=now.getFullYear(),M=now.getMonth(),D=now.getDate();
+  const isLast=new Date(Y,M+1,0).getDate()==D;
+  const t=isLast?new Date(Y,M,1):new Date(Y,M-1,1);
+  const key=t.getFullYear()*12+t.getMonth();
+  const windowStart=isLast?new Date(Y,M,D).getTime():new Date(Y,M,0).getTime();
+  const due=earliestKey!=null&&earliestKey<=key&&!(lastExportTs>=windowStart);
+  return{due,y:t.getFullYear(),m:t.getMonth()};
+}

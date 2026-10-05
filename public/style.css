@@ -59,3 +59,6 @@ nav button.on{color:var(--ok);font-weight:700}
 .rcrow{display:flex;gap:8px;margin:8px 0 4px}
 .rcrow input{flex:1;min-width:0;width:auto}
 .rcrow input:last-child{flex:0 0 7.5em}
+.bkdue{background:var(--bub)}
+.bkdue .acts{display:flex;gap:8px;margin-top:10px}
+.bkdue .btn{flex:1;min-height:40px}.bkdue .no{background:var(--bg);color:var(--ink)}

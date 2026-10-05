@@ -64,3 +64,29 @@ test("ありえない日時・日付の記録は読み込まない（月の切�
   assert.deepEqual(r.added, { items: 0, recur: 0, favs: 0 });
   assert.equal(earliestOffset(r.data, NOW), 0);
 });
+
+test("月末のバックアップ: 月末の日に今月分を促し、書き出したら消える", async () => {
+  const { backupDue } = await import("../public/data.js");
+  const oct = 2026 * 12 + 9;
+  const last = new Date(2026, 9, 31, 20);
+  assert.deepEqual(backupDue(last, 0, oct), { due: true, y: 2026, m: 9 });
+  assert.equal(backupDue(last, new Date(2026, 9, 31, 8).getTime(), oct).due, false); // 当日に書き出し済み
+  assert.equal(backupDue(last, new Date(2026, 9, 25).getTime(), oct).due, true);     // 月末より前の書き出しは数えない
+});
+
+test("月末のバックアップ: 忘れたら翌月も先月分を促す。記録がない月は促さない", async () => {
+  const { backupDue } = await import("../public/data.js");
+  const oct = 2026 * 12 + 9, nov = oct + 1;
+  const nov3 = new Date(2026, 10, 3, 9);
+  assert.deepEqual(backupDue(nov3, 0, oct), { due: true, y: 2026, m: 9 });
+  assert.equal(backupDue(nov3, new Date(2026, 9, 31, 22).getTime(), oct).due, false); // 10/31 に書き出し済み
+  assert.equal(backupDue(nov3, 0, nov).due, false);  // 11月から使い始めた人に10月分は促さない
+  assert.equal(backupDue(nov3, 0, null).due, false); // 記録なし
+  assert.equal(backupDue(new Date(2026, 9, 15), 0, oct).due, false); // 10月の途中で、10月から使い始めた
+});
+
+test("月末のバックアップ: 2月末・年またぎ", async () => {
+  const { backupDue } = await import("../public/data.js");
+  assert.deepEqual(backupDue(new Date(2027, 1, 28, 21), 0, 2027 * 12), { due: true, y: 2027, m: 1 });
+  assert.deepEqual(backupDue(new Date(2027, 0, 2), 0, 2026 * 12 + 9), { due: true, y: 2026, m: 11 });
+});

@@ -1,5 +1,5 @@
 import { CATS, cat, amount, normalize, split, receiptFromText, hankaku } from "./parse.js";
-import { exportData, importData, earliestOffset } from "./data.js";
+import { exportData, importData, earliestOffset, earliestMonthKey, backupDue } from "./data.js";
 
 const KEY="zubora_v1";
 let S={goal:50000,items:[],recur:[]};
@@ -45,6 +45,7 @@ function render(msg){
   $("perday").textContent=over?"":"1日 "+yen(Math.max(0,s.left)/rem)+" まで";
   $("cheer").textContent=msg||cheerText(s);
   renderMonth(stats(viewOff));
+  if(typeof renderBkDue=="function")renderBkDue();
 }
 let selDay=null,viewOff=0;
 function renderMonth(s){
@@ -93,14 +94,34 @@ $("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);
 
 // バックアップ: 書き出しは共有シート（iPhone は「ファイルに保存」できる）かダウンロード。読み込みは今のデータに足す
 const bkMsg=t=>{$("bkmsg").textContent=t};
-$("bkout").onclick=async()=>{
+// 書き出しの記録（家計簿データとは別のキー）: last=最後に書き出した時刻, snooze=「あとで」を押した日
+const BKKEY="zubora_bk";
+let BK={};try{BK=JSON.parse(localStorage.getItem(BKKEY))||{}}catch(e){}
+const saveBk=()=>{try{localStorage.setItem(BKKEY,JSON.stringify(BK))}catch(e){}};
+const ymd=d=>d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
+const lastBkText=()=>BK.last?"最後に書き出した日: "+(new Date(BK.last).getMonth()+1)+"/"+new Date(BK.last).getDate():"記録はこのスマホの中だけにあるよ。ときどき書き出しておくと安心。";
+// 書き出す。保存できた（と思われる）ら true
+async function doExport(){
   const d=new Date(),name="zubora-kakeibo-"+d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")+".json";
   const blob=new Blob([exportData(S,d)],{type:"application/json"});
-  try{const f=new File([blob],name,{type:"application/json"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:"ズボラ家計簿のバックアップ"});bkMsg("書き出したよ。");return}}
-  catch(e){if(e&&e.name=="AbortError")return}
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
-  bkMsg("「"+name+"」を書き出したよ。");
-};
+  let done=false;
+  try{const f=new File([blob],name,{type:"application/json"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:"ズボラ家計簿のバックアップ"});done=true}}
+  catch(e){if(e&&e.name=="AbortError")return false}
+  if(!done){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
+  BK.last=Date.now();saveBk();renderBkDue();
+  return true;
+}
+// 月末（忘れていたら翌月）に入力画面の上でバックアップを促す
+function renderBkDue(){
+  const now=new Date(),r=backupDue(now,BK.last||0,earliestMonthKey(S));
+  const show=r.due&&BK.snooze!==ymd(now);
+  $("bkdue").hidden=!show;
+  if(show)$("bkduet").textContent="📦 "+(r.m+1)+"月分のバックアップをとろう。1タップで保存できるよ。";
+  if($("bkmsg").dataset.fixed!="1")$("bkmsg").textContent=lastBkText();
+}
+$("bkout").onclick=async()=>{if(await doExport()){$("bkmsg").dataset.fixed="1";bkMsg("書き出したよ。"+lastBkText().replace("最後に書き出した日: ","（")+"）")}};
+$("bkdueok").onclick=async()=>{if(await doExport())$("cheer").textContent="バックアップしたよ。えらい、これで安心〜"};
+$("bkduelater").onclick=()=>{BK.snooze=ymd(new Date());saveBk();renderBkDue()};
 $("bkin").onclick=()=>$("bkfile").click();
 $("bkfile").onchange=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
