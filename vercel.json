@@ -5,7 +5,28 @@
   "buildCommand": "npm run vendor:ocr",
   "outputDirectory": "public",
   "headers": [
-    { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
-    { "source": "/vendor/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }] }
-  ]
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
+      "source": "/vendor/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=604800"
+        }
+      ]
+    }
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "gh-pages": false
+    }
+  }
 }

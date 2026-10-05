@@ -95,7 +95,9 @@ function tab(n){$("v1").hidden=n!=1;$("v2").hidden=n!=2;$("t1").className=n==1?"
 const prevMonth=()=>{if(viewOff>Math.max(-60,earliestOffset(S))){viewOff--;selDay=null;renderMonth(stats(viewOff))}};
 const nextMonth=()=>{if(viewOff<24){viewOff++;selDay=null;renderMonth(stats(viewOff))}};
 $("pm").onclick=$("cpm").onclick=prevMonth;$("nm").onclick=$("cnm").onclick=nextMonth;
-$("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);
+$("t1").onclick=()=>tab(1);
+// 「今月」タブを表示中にもう一度押すと、今の月（と全部の記録）に戻る
+$("t2").onclick=()=>{if(!$("v2").hidden&&(viewOff||selDay)){viewOff=0;selDay=null;renderMonth(stats(0))}tab(2)};
 
 // バックアップ: 書き出しは共有シート（iPhone は「ファイルに保存」できる）かダウンロード。読み込みは今のデータに足す
 const bkMsg=t=>{$("bkmsg").textContent=t};
