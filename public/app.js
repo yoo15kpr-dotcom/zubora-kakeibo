@@ -256,16 +256,10 @@ function renderFavs(){
   const C=$("chips");C.innerHTML="";
   S.favs.forEach((f,i)=>{const b=document.createElement("button");b.textContent=(favEdit?"× ":"")+f.l+" "+f.a.toLocaleString("ja-JP")+"円";
     b.onclick=()=>{if(favEdit){S.favs.splice(i,1);save();renderFavs()}else submit(f.l+f.a+"円")};C.appendChild(b)});
-  if(!S.favs.length)C.innerHTML='<span class="sub">まだ空っぽ。下の☆で入れてね。</span>';
+  if(!S.favs.length)C.innerHTML='<span class="sub">まだ空っぽ。同じものを2回記録すると自動で入るよ（今月の記録一覧の☆でも入れられるよ）。</span>';
   $("favedit").textContent=favEdit?"✓ 完了":"✎ 編集";
 }
 $("favedit").onclick=()=>{favEdit=!favEdit;renderFavs()};
-$("favadd").onclick=()=>{
-  const L=split(normalize($("txt").value)).filter(z=>!z.rec);
-  if(!L.length){$("cheer").textContent="入力欄に「コンビニ500円」みたいに書いてから押してね。";return}
-  let n=0;L.forEach(z=>{if(addFav(z.label,z.a))n++});
-  $("cheer").textContent=n?n+"件、よく使うリストに入れたよ。":"もうリストに入ってるよ。";
-};
 
 // 音声入力: ブラウザの音声認識が使えればそれで聞き取って記録。
 // 使えない環境（非対応ブラウザ、マイク不可の埋め込み画面など）では、キーボードのマイクで話してもらう
