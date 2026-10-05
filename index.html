@@ -27,8 +27,8 @@ h1{font-size:20px;margin:0 0 8px}
   </section>
   <section class="card old" id="old" hidden>
     <div><b>このURLに前の記録が <span id="n"></span> 件残っています。</b></div>
-    <div class="sub">「書き出す」で保存して、新しいズボラ家計簿の「今月」→「⬆ 読み込む」で移せます。</div>
-    <button class="btn" id="out">⬇ 書き出す</button>
+    <div class="sub">「残しとく」で保存して、新しいズボラ家計簿の「今月」→「⬆ 読み込む」で移せます。</div>
+    <button class="btn" id="out">⬇ 残しとく</button>
     <div class="sub" id="msg" style="margin-top:8px"></div>
   </section>
 </main>
@@ -36,7 +36,7 @@ h1{font-size:20px;margin:0 0 8px}
 // 前のアプリがこの端末に入れた Service Worker と保存ファイルを片付ける
 if("serviceWorker" in navigator)navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>{if(r.scope.includes("/zubora-kakeibo/"))r.unregister()})).catch(()=>{});
 if(window.caches)caches.keys().then(ks=>ks.filter(k=>k.startsWith("zubora-")).forEach(k=>caches.delete(k))).catch(()=>{});
-// このURLに残っている記録があれば書き出せるようにする（新しいURLとは保存場所が別のため）
+// このURLに残っている記録があれば保存できるようにする（新しいURLとは保存場所が別のため）
 let raw=null,S=null;
 try{raw=localStorage.getItem("zubora_v1");S=raw&&JSON.parse(raw)}catch(e){}
 const n=S?((S.items||[]).length+(S.recur||[]).length):0;
@@ -46,10 +46,10 @@ if(n){
     const d=new Date(),name="zubora-kakeibo-old-"+d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")+".json";
     const text=JSON.stringify({app:"zubora-kakeibo",version:1,exportedAt:d.toISOString(),data:{goal:S.goal,items:S.items||[],recur:S.recur||[],favs:S.favs||[]}},null,1);
     const blob=new Blob([text],{type:"application/json"});
-    try{const f=new File([blob],name,{type:"application/json"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:"ズボラ家計簿のバックアップ"});document.getElementById("msg").textContent="書き出したよ。新しいほうで読み込んでね。";return}}
+    try{const f=new File([blob],name,{type:"application/json"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:"ズボラ家計簿のバックアップ"});document.getElementById("msg").textContent="残しといたよ。新しいほうで読み込んでね。";return}}
     catch(e){if(e&&e.name=="AbortError")return}
     const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
-    document.getElementById("msg").textContent="「"+name+"」を書き出したよ。新しいほうで読み込んでね。";
+    document.getElementById("msg").textContent="残しといたよ（"+name+"）。新しいほうで読み込んでね。";
   };
 }
 </script>
