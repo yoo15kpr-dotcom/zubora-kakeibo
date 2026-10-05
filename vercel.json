@@ -28,5 +28,6 @@
     "deploymentEnabled": {
       "gh-pages": false
     }
-  }
+  },
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- public package.json package-lock.json vercel.json scripts || exit 1"
 }
