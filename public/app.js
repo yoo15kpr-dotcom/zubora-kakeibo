@@ -50,7 +50,11 @@ function render(msg){
 let selDay=null,viewOff=0;
 function renderMonth(s){
   const minOff=Math.max(-60,earliestOffset(S));
-  $("h2").textContent=s.y+"年"+(s.mo+1)+"月";$("pm").disabled=viewOff<=minOff;$("pm").style.opacity=viewOff<=minOff?.25:1;
+  $("h2").textContent=s.y+"年"+(s.mo+1)+"月";
+  // 上の ◀▶ とカレンダーの ◀▶ は同じ動き。戻れない／進めない月では薄くする
+  for(const id of ["pm","cpm"]){$(id).disabled=viewOff<=minOff;$(id).style.opacity=viewOff<=minOff?.25:1}
+  for(const id of ["nm","cnm"]){$(id).disabled=viewOff>=24;$(id).style.opacity=viewOff>=24?.25:1}
+  $("calh").textContent=(s.mo+1)+"月（日をタップで絞り込み）";
   $("mtl").textContent=s.off==0?"今月使った金額":"この月に使った金額";
   $("mt").textContent=yen(s.spent);
   $("mc").textContent=s.items.length+"件";
@@ -88,8 +92,9 @@ function renderMonth(s){
 }
 function tab(n){$("v1").hidden=n!=1;$("v2").hidden=n!=2;$("t1").className=n==1?"on":"";$("t2").className=n==2?"on":"";window.scrollTo(0,0)}
 // 記録のある一番古い月まで戻れる（最大5年）
-$("pm").onclick=()=>{if(viewOff>Math.max(-60,earliestOffset(S))){viewOff--;selDay=null;renderMonth(stats(viewOff))}};
-$("nm").onclick=()=>{if(viewOff<24){viewOff++;selDay=null;renderMonth(stats(viewOff))}};
+const prevMonth=()=>{if(viewOff>Math.max(-60,earliestOffset(S))){viewOff--;selDay=null;renderMonth(stats(viewOff))}};
+const nextMonth=()=>{if(viewOff<24){viewOff++;selDay=null;renderMonth(stats(viewOff))}};
+$("pm").onclick=$("cpm").onclick=prevMonth;$("nm").onclick=$("cnm").onclick=nextMonth;
 $("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);
 
 // バックアップ: 書き出しは共有シート（iPhone は「ファイルに保存」できる）かダウンロード。読み込みは今のデータに足す
