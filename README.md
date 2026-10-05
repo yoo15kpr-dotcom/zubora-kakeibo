@@ -1,6 +1,8 @@
 # ズボラ家計簿
 
-**公開版**: https://yoo15kpr-dotcom.github.io/zubora-kakeibo/ （スマホで開いて「ホーム画面に追加」）
+**公開版**: https://zuborakakeibo.vercel.app/ （スマホで開いて「ホーム画面に追加」）
+
+旧URL（GitHub Pages）: https://yoo15kpr-dotcom.github.io/zubora-kakeibo/ も当面は同じ内容で動いています。記録は URL ごとに別なので、移るときは「書き出す → 読み込む」で移してください。
 
 話し言葉（音声または文字）をそのまま入力すると記録される、ズボラ向けの家計簿。
 目標金額との差と、ゆるい応援の言葉を表示します。データは端末の `localStorage`（キー `zubora_v1`）にだけ保存します。
@@ -118,7 +120,9 @@ iPhone ではホーム画面に追加したアプリと Safari の保存領域�
 `vercel.json` の設定で、Vercel が `npm ci` → `npm run vendor:ocr`（文字認識の部品のコピー）を実行し、`public/` をそのまま公開します。サーバー版のコード（`server.js`・`lib/`）は `.vercelignore` で除外しています。
 
 1. https://vercel.com に GitHub でログイン（Hobby プラン＝無料・個人の非商用利用）
-2. 「Add New… → Project」でこのリポジトリを Import し、Project Name を決めて Deploy（URL は `<Project Name>.vercel.app`）
+2. 「Add New… → Project」でこのリポジトリを Import して Deploy
+   - 本番URLは「プロジェクト名＋ランダムな単語」で自動的に付く（例: `zubora-kakeibo-blond.vercel.app`）。Settings → Domains の「Edit」で空いている `〜.vercel.app` に変えられる（このプロジェクトは `zuborakakeibo.vercel.app`）
+   - 自動で作られる確認用URL（`〜-<ハッシュ>-<チーム名>.vercel.app` など）は Vercel へのログインが必要。普段は本番URLを使う
 3. 以後は main に push するたびに自動で公開されます
 
 ## GitHub Pages への公開
