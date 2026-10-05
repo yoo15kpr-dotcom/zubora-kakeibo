@@ -19,7 +19,7 @@
 <div id="v1">
 <h1>🍵 ズボラ家計簿</h1>
 <section class="card bkdue" id="iosnote" hidden><div id="iosnotet"></div><div class="acts"><button class="btn no" id="iosnoteok">わかった</button></div></section>
-<section class="card bkdue" id="bkdue" hidden><div id="bkduet"></div><div class="acts"><button class="btn" id="bkdueok">⬇ 書き出す</button><button class="btn no" id="bkduelater">あとで</button></div></section>
+<section class="card bkdue" id="bkdue" hidden><div id="bkduet"></div><div class="acts"><button class="btn" id="bkdueok">⬇ 残しとく</button><button class="btn no" id="bkduelater">あとで</button></div></section>
 
 <section class="card">
   <div class="row"><span class="sub" id="month"></span><span class="sub">目標 <button class="goal" id="goal"></button><input class="goalin" id="goalin" inputmode="numeric" enterkeyhint="done" autocomplete="off" aria-label="今月の目標（使っていい金額）" hidden></span></div>
@@ -53,9 +53,9 @@
   <section class="card"><div class="row" style="align-items:center"><button class="x" id="cpm" aria-label="前の月">◀</button><div class="sub" id="calh">カレンダー（日をタップで絞り込み）</div><button class="x" id="cnm" aria-label="次の月">▶</button></div><div class="cal" id="cal"></div></section>
   <section class="card"><div class="sub" style="margin-bottom:4px" id="lh">記録一覧</div><div id="list"></div></section>
   <section class="card"><div class="sub">バックアップ（機種変更や念のために）</div>
-    <div class="chips"><button id="bkout">⬇ 書き出す</button><button id="bkin">⬆ 読み込む</button></div>
+    <div class="chips"><button id="bkout">⬇ 残しとく</button><button id="bkin">⬆ 読み込む</button></div>
     <input type="file" id="bkfile" accept="application/json,.json" hidden>
-    <div class="sub" id="bkmsg" style="margin-top:6px">記録はこのスマホの中だけにあるよ。ときどき書き出しておくと安心。</div></section>
+    <div class="sub" id="bkmsg" style="margin-top:6px">記録はこのスマホの中だけにあるよ。ときどき「残しとく」を押しておくと安心。</div></section>
 </div>
 </main>
 <nav><button id="t1" class="on">✏️ 入力</button><button id="t2">📊 今月</button></nav>

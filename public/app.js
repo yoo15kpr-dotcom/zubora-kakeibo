@@ -104,7 +104,7 @@ const BKKEY="zubora_bk";
 let BK={};try{BK=JSON.parse(localStorage.getItem(BKKEY))||{}}catch(e){}
 const saveBk=()=>{try{localStorage.setItem(BKKEY,JSON.stringify(BK))}catch(e){}};
 const ymd=d=>d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
-const lastBkText=()=>BK.last?"最後に書き出した日: "+(new Date(BK.last).getMonth()+1)+"/"+new Date(BK.last).getDate():"記録はこのスマホの中だけにあるよ。ときどき書き出しておくと安心。";
+const lastBkText=()=>BK.last?"最後に残した日: "+(new Date(BK.last).getMonth()+1)+"/"+new Date(BK.last).getDate():"記録はこのスマホの中だけにあるよ。ときどき「残しとく」を押しておくと安心。";
 // 書き出す。保存できた（と思われる）ら true
 async function doExport(){
   const d=new Date(),name="zubora-kakeibo-"+d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")+".json";
@@ -121,11 +121,11 @@ function renderBkDue(){
   const now=new Date(),r=backupDue(now,BK.last||0,earliestMonthKey(S));
   const show=r.due&&BK.snooze!==ymd(now);
   $("bkdue").hidden=!show;
-  if(show)$("bkduet").textContent="📦 "+(r.m+1)+"月分のバックアップをとろう。1タップで保存できるよ。";
+  if(show)$("bkduet").textContent="📦 "+(r.m+1)+"月分の記録を残しとこう。1タップでOK。";
   if($("bkmsg").dataset.fixed!="1")$("bkmsg").textContent=lastBkText();
 }
-$("bkout").onclick=async()=>{if(await doExport()){$("bkmsg").dataset.fixed="1";bkMsg("書き出したよ。"+lastBkText().replace("最後に書き出した日: ","（")+"）")}};
-$("bkdueok").onclick=async()=>{if(await doExport())$("cheer").textContent="バックアップしたよ。えらい、これで安心〜"};
+$("bkout").onclick=async()=>{if(await doExport()){$("bkmsg").dataset.fixed="1";bkMsg("残しといたよ。"+lastBkText().replace("最後に残した日: ","（")+"）")}};
+$("bkdueok").onclick=async()=>{if(await doExport())$("cheer").textContent="残しといたよ。えらい、これで安心〜"};
 $("bkduelater").onclick=()=>{BK.snooze=ymd(new Date());saveBk();renderBkDue()};
 
 // iPhone では Safari とホーム画面のアイコンで保存場所が別（Apple の仕様）。記録が「消えた」ように見えないよう案内する
@@ -135,7 +135,7 @@ function renderNote(){
   let t="";
   if(isIOS&&!BK.noteOk){
     if(!standalone)t="📱 ホーム画面のアイコンから開くのがおすすめ。iPhoneでは、Safariとホーム画面のアイコンで記録が別々に保存されるよ（いつも同じほうで開いてね）。";
-    else if(!S.items.length&&!S.recur.length)t="📱 Safariで使っていた記録や「よく使う」は、Safariで「今月」→「⬇ 書き出す」、ここで「⬆ 読み込む」で移せるよ。";
+    else if(!S.items.length&&!S.recur.length)t="📱 Safariで使っていた記録や「よく使う」は、Safariで「今月」→「⬇ 残しとく」、ここで「⬆ 読み込む」で移せるよ。";
   }
   $("iosnote").hidden=!t;if(t)$("iosnotet").textContent=t;
 }
@@ -145,7 +145,7 @@ $("bkfile").onchange=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
   try{const r=importData(S,await f.text());S=Object.assign(S,r.data);save();renderFavs();render();
     const n=r.added.items+r.added.recur;bkMsg(n||r.added.favs?"読み込んだよ。記録 "+r.added.items+"件、繰り返し "+r.added.recur+"件、よく使う "+r.added.favs+"件を足したよ。":"新しい記録はなかったよ（もう入ってた）。")}
-  catch(err){bkMsg("このファイルは読み込めなかったよ。書き出したバックアップ（.json）を選んでね。")}
+  catch(err){bkMsg("このファイルは読み込めなかったよ。「残しとく」で保存したファイル（.json）を選んでね。")}
 };
 
 // レシート読み取り: サーバーの /api/receipt（APIキーはサーバー側）。使えるときだけ📷を出す
