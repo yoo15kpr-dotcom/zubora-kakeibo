@@ -32,9 +32,11 @@
 
 <section class="card">
   <div class="inp">
-    <input id="txt" placeholder="例：ランチ850円" autocomplete="off" enterkeyhint="send">
-    <button class="btn mic" id="mic" aria-label="音声入力">🎤</button>
-    <button class="btn" id="add">記録</button>
+    <textarea id="txt" rows="2" placeholder="例：ランチ850円" autocomplete="off" enterkeyhint="send" aria-label="使ったお金（例：ランチ850円）"></textarea>
+    <div class="inpbtns">
+      <button class="btn mic" id="mic" aria-label="音声入力">🎤</button>
+      <button class="btn" id="add">記録</button>
+    </div>
   </div>
   <div class="sub" style="margin-top:12px">よく使う（タップで1件追加）</div>
   <div class="chips" id="chips"></div>

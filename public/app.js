@@ -277,7 +277,8 @@ function submit(t){
   render((n1?(n1>1?n1+"件、":"")+yen(tot)+" 記録したよ。":"")+(rn.length?rn.join("、")+" を登録したよ。":"")+(auto.length?"「"+auto.join("、")+"」、よく使いそうだからリストに入れといたよ〜":cheerText(stats())));
 }
 $("add").onclick=()=>submit();
-$("txt").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.isComposing)submit()});
+// 入力欄は2行の textarea。改行キー（送信）で記録する。変換の確定中（229）と Shift+改行は記録しない
+$("txt").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();submit()}});
 
 // 目標金額: タップでその場の入力欄に切り替え（prompt() は埋め込み環境で動かないことがあるため使わない）
 const gi=$("goalin");let goalOpen=false;
