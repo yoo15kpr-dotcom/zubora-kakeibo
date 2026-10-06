@@ -29,5 +29,5 @@
       "gh-pages": false
     }
   },
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- public package.json package-lock.json vercel.json scripts || exit 1"
+  "ignoreCommand": "if [ -z \"$VERCEL_GIT_PREVIOUS_SHA\" ]; then exit 1; fi; git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- public package.json package-lock.json vercel.json scripts || exit 1"
 }
