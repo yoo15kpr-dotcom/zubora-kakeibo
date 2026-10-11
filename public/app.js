@@ -48,6 +48,7 @@ function render(msg){
   if(typeof renderBkDue=="function"){renderBkDue();renderNote()}
 }
 let selDay=null,viewOff=0;
+const openIds=new Set(); // 記録一覧で全文を開いている記録（描き直しても開いたまま）
 function renderMonth(s){
   const minOff=Math.max(-60,earliestOffset(S));
   $("h2").textContent=s.y+"年"+(s.mo+1)+"月";
@@ -77,18 +78,23 @@ function renderMonth(s){
     c.innerHTML="<span></span><small></small>";c.children[0].textContent=d;c.children[1].textContent=v?K(v):"";
     c.onclick=()=>{selDay=selDay==d?null:d;renderMonth(stats(viewOff))};cal.appendChild(c)});
   const li=selDay?s.items.filter(i=>new Date(i.ts).getDate()==selDay):s.items;
-  $("lh").textContent=selDay?(s.mo+1)+"月"+selDay+"日の記録（もう一度タップで全部）":"記録一覧";
+  $("lh").textContent=selDay?(s.mo+1)+"月"+selDay+"日の記録（もう一度タップで全部）":"記録一覧（タップで全文）";
   const L=$("list");
   if(!li.length){L.innerHTML='<div class="empty">まだ記録なし。上に一言どうぞ。</div>'}
   else{L.innerHTML="";[...li].reverse().slice(0,30).forEach(i=>{
     const d=new Date(i.ts),el=document.createElement("div");el.className="item";
-    el.innerHTML='<span class="sub">'+(d.getMonth()+1)+'/'+d.getDate()+'</span><span class="t"></span><span class="tag"></span><b></b><button class="x st" aria-label="リストに入れる">☆</button><button class="x" aria-label="削除">×</button>';
-    el.querySelector(".t").textContent=i.text;el.querySelector(".tag").textContent=i.cat;
+    el.innerHTML='<span class="sub">'+(d.getMonth()+1)+'/'+d.getDate()+'</span><span class="t" role="button" tabindex="0" aria-expanded="false"></span><span class="tag"></span><b></b><button class="x st" aria-label="リストに入れる">☆</button><button class="x" aria-label="削除">×</button>';
+    const t=el.querySelector(".t");t.textContent=i.text;el.querySelector(".tag").textContent=i.cat;
+    // タップで全文を表示／もう一度タップで戻す（☆・× のタップは除く）。文が収まっているときは何もしない
+    const open=on=>{el.classList.toggle("open",on);t.setAttribute("aria-expanded",on);on?openIds.add(i.id):openIds.delete(i.id)};
+    const toggle=()=>{if(el.classList.contains("open"))open(false);else if(t.scrollWidth>t.clientWidth)open(true)};
+    el.onclick=e=>{if(!e.target.closest("button"))toggle()};
+    t.onkeydown=e=>{if(e.key=="Enter"||e.key==" "){e.preventDefault();toggle()}};
     el.querySelector("b").textContent=yen(i.amount);
     const st=el.querySelector(".st");
     if(i.rec)st.style.visibility="hidden";else st.onclick=()=>{const l=i.text.replace(/ [\d,]+円$/,"");$("cheer").textContent=addFav(l,i.amount)?"「"+l+" "+i.amount.toLocaleString("ja-JP")+"円」をよく使うリストに入れたよ。":"もうリストに入ってるよ。"};
     el.querySelector(".x:last-child").onclick=()=>{if(i.rec)S.recur=S.recur.filter(r=>r.id!==i.rec);else S.items=S.items.filter(z=>z.id!==i.id);save();render(i.rec?"毎月の登録をやめたよ。":"消しておいたよ。")};
-    L.appendChild(el)})}
+    L.appendChild(el);if(openIds.has(i.id))open(true)})}
 }
 function tab(n){$("v1").hidden=n!=1;$("v2").hidden=n!=2;$("t1").className=n==1?"on":"";$("t2").className=n==2?"on":"";window.scrollTo(0,0)}
 // 記録のある一番古い月まで戻れる（最大5年）
