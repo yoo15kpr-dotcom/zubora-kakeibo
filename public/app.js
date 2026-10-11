@@ -1,12 +1,19 @@
 import { CATS, cat, amount, normalize, split, receiptFromText, hankaku } from "./parse.js";
 import { exportData, importData, earliestOffset, earliestMonthKey, backupDue } from "./data.js";
+import { mergeState, canon, delKey, newSecret, secretFromText, keysFrom, seal, unseal } from "./sync.js";
 
 const KEY="zubora_v1";
 let S={goal:50000,items:[],recur:[]};
 try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
-S.recur=S.recur||[];S.favs=S.favs||[{l:"コンビニ",a:500}];
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+S.recur=S.recur||[];S.favs=S.favs||[{l:"コンビニ",a:500}];S.del=S.del||{}; // del: 消した印（2人で共有するときに、消したことを相手にも伝える）
+const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+// 共有中なら少し待ってから同期（続けて入力しても1回にまとめる）
+const save=()=>{persist();SY.dirty=true;if(SY.secret)syncSoon(1500)};
 const $=id=>document.getElementById(id);
+// 2人で共有（同期）の状態。secret は招待リンクに入る鍵。この端末の中だけに保存
+const SYKEY="zubora_sync";
+const SY={secret:null,keys:null,last:0,lastTry:0,dirty:false,busy:false,again:false,timer:0,msg:"",stopArm:0};
+try{const j=JSON.parse(localStorage.getItem(SYKEY));if(j&&j.secret){SY.secret=j.secret;SY.last=j.last||0}}catch(e){}
 const yen=n=>"¥"+Math.round(n).toLocaleString("ja-JP");
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 function stats(off=0){
@@ -46,6 +53,7 @@ function render(msg){
   $("cheer").textContent=msg||cheerText(s);
   renderMonth(stats(viewOff));
   if(typeof renderBkDue=="function"){renderBkDue();renderNote()}
+  if(typeof renderShare=="function")renderShare();
 }
 let selDay=null,viewOff=0;
 const openIds=new Set(); // 記録一覧で全文を開いている記録（描き直しても開いたまま）
@@ -104,7 +112,7 @@ function renderMonth(s){
     el.querySelector("b").textContent=yen(i.amount);
     const st=el.querySelector(".st");
     if(i.rec)st.style.visibility="hidden";else st.onclick=()=>{const l=i.text.replace(/ [\d,]+円$/,"");$("cheer").textContent=addFav(l,i.amount)?"「"+l+" "+i.amount.toLocaleString("ja-JP")+"円」をよく使うリストに入れたよ。":"もうリストに入ってるよ。"};
-    el.querySelector(".x:last-child").onclick=()=>{if(i.rec)S.recur=S.recur.filter(r=>r.id!==i.rec);else S.items=S.items.filter(z=>z.id!==i.id);save();render(i.rec?"毎月の登録をやめたよ。":"消しておいたよ。")};
+    el.querySelector(".x:last-child").onclick=()=>{if(i.rec){S.recur=S.recur.filter(r=>r.id!==i.rec);S.del[delKey.recur(i.rec)]=Date.now()}else{S.items=S.items.filter(z=>z.id!==i.id);S.del[delKey.item(i.id)]=Date.now()}save();render(i.rec?"毎月の登録をやめたよ。":"消しておいたよ。")};
     L.appendChild(el);if(openIds.has(i.id))open(true)})}
 }
 function tab(n){$("v1").hidden=n!=1;$("v2").hidden=n!=2;$("t1").className=n==1?"on":"";$("t2").className=n==2?"on":"";window.scrollTo(0,0)}
@@ -276,6 +284,7 @@ $("file").onchange=async e=>{
 };
 function submit(t){
   t=(t||$("txt").value).trim();if(!t)return;
+  {const js=secretFromText(t);if(js){$("txt").value="";joinShare(js);return}}
   if(/合計|お会計|御会計|ご請求/.test(t)&&(hankaku(t).match(/\d+/g)||[]).length>=3){const r=receiptFromText(t);if(r.total){$("txt").value="";showReceipt(r);return}}
   const list=split(normalize(t));
   if(!list.length){$("cheer").textContent="金額が見つからなかったよ。「ランチ800円」みたいに言ってみて。";return}
@@ -303,18 +312,18 @@ function goalDone(apply){
   if(!goalOpen)return;goalOpen=false;
   const n=apply?amount(gi.value):0;
   gi.hidden=true;$("goal").hidden=false;
-  if(n>0){S.goal=n;save();render("目標を "+yen(n)+" にしたよ。")}
+  if(n>0){S.goal=n;S.goalTs=Date.now();save();render("目標を "+yen(n)+" にしたよ。")}
 }
 $("goal").onclick=()=>{goalOpen=true;gi.value=S.goal;$("goal").hidden=true;gi.hidden=false;gi.focus();gi.select()};
 gi.addEventListener("keydown",e=>{if(e.isComposing)return;if(e.key==="Enter")goalDone(true);else if(e.key==="Escape")goalDone(false)});
 gi.addEventListener("blur",()=>goalDone(true));
 
 let favEdit=false;
-function addFav(l,a){if(!l||!a||S.favs.some(f=>f.l==l&&f.a==a))return false;S.favs.push({l,a});save();renderFavs();return true}
+function addFav(l,a){if(!l||!a||S.favs.some(f=>f.l==l&&f.a==a))return false;S.favs.push({l,a,t:Date.now()});save();renderFavs();return true}
 function renderFavs(){
   const C=$("chips");C.innerHTML="";
   S.favs.forEach((f,i)=>{const b=document.createElement("button");b.textContent=(favEdit?"× ":"")+f.l+" "+f.a.toLocaleString("ja-JP")+"円";
-    b.onclick=()=>{if(favEdit){S.favs.splice(i,1);save();renderFavs()}else submit(f.l+f.a+"円")};C.appendChild(b)});
+    b.onclick=()=>{if(favEdit){S.favs.splice(i,1);S.del[delKey.fav(f.l,f.a)]=Date.now();save();renderFavs()}else submit(f.l+f.a+"円")};C.appendChild(b)});
   if(!S.favs.length)C.innerHTML='<span class="sub">まだ空っぽ。同じものを2回記録すると自動で入るよ（今月の記録一覧の☆でも入れられるよ）。</span>';
   $("favedit").textContent=favEdit?"✓ 完了":"✎ 編集";
 }
@@ -333,6 +342,92 @@ else{
   r.onerror=e=>{off();if(/not-allowed|service-not-allowed|audio-capture|network/.test(e.error))dictateHint();else if(e.error=="no-speech")$("cheer").textContent="聞き取れなかったよ。もう一度🎤を押して話してね。"};
   $("mic").onclick=()=>{if(on){r.stop();return}try{r.start();on=true;$("mic").classList.add("on");$("cheer").textContent="聞いてるよ…話してね。"}catch(e){off();dictateHint()}};
 }
+// ---- 2人で共有（同期）
+// 記録は鍵で暗号化してから /api/sync（Vercel Blob）に置く。開いたとき・入力したとき・戻ってきたときに、
+// サーバーの記録と足し合わせて両方を同じにする（消した印も足し合わせるので、消した記録は相手からも消える）
+const SYNC_API="api/sync";
+const saveSync=()=>{try{SY.secret?localStorage.setItem(SYKEY,JSON.stringify({secret:SY.secret,last:SY.last})):localStorage.removeItem(SYKEY)}catch(e){}};
+const inviteUrl=()=>location.origin+location.pathname+"#join="+SY.secret;
+const hm=t=>{const d=new Date(t);return(d.getMonth()+1)+"/"+d.getDate()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")};
+class SyncError extends Error{constructor(code){super(code);this.code=code}}
+const failText=e=>{const c=e&&e.code;
+  return c=="not_configured"?"共有の保存場所がまだ用意されていないみたい。":
+    c=="bad_data"?"共有の記録が読めなかったよ（リンクがちがうかも）。":
+    c=="storage"||c=="server"?"保存場所でエラーが出たよ。少し時間をおいてね。":
+    "電波がないみたい。つながったら自動で同期するよ。"};
+const apiFail=r=>new SyncError(r.status==503?"not_configured":r.status==502?"storage":"server");
+function syncSoon(ms){clearTimeout(SY.timer);SY.timer=setTimeout(syncNow,ms)}
+// 同期する。うまくいったら true
+async function syncNow(){
+  if(!SY.secret)return false;
+  if(SY.busy){SY.again=true;return false}
+  SY.busy=true;SY.again=false;clearTimeout(SY.timer);SY.lastTry=Date.now();
+  const startedDirty=SY.dirty;SY.dirty=false;
+  let ok=false,changed=false;
+  try{
+    const {key,token}=SY.keys||(SY.keys=await keysFrom(SY.secret));
+    for(let n=0;n<4&&!ok;n++){
+      let remote=null,etag=null;
+      const r=await fetch(SYNC_API,{headers:{"X-Sync-Token":token},cache:"no-store"});
+      if(r.status==200){etag=r.headers.get("ETag");try{remote=await unseal(await r.json(),key)}catch(e){throw new SyncError("bad_data")}}
+      else if(r.status!=404)throw apiFail(r);
+      const merged=mergeState(S,remote);
+      if(canon(merged)!==canon(S)){S=Object.assign(S,merged);persist();changed=true}
+      if(remote&&canon(merged)===canon(remote)){ok=true;break}
+      const w=await fetch(SYNC_API,{method:"PUT",headers:{"X-Sync-Token":token,"Content-Type":"application/json",...(etag?{"If-Match":etag}:{})},body:JSON.stringify(await seal(merged,key))});
+      if(w.status==412)continue; // 相手が同時に書いた。読み直して足し合わせる
+      if(!w.ok)throw apiFail(w);
+      ok=true;
+    }
+    if(!ok)throw new SyncError("server");
+    SY.last=Date.now();SY.msg="";saveSync();
+  }catch(e){if(startedDirty)SY.dirty=true;SY.msg=failText(e)}
+  finally{SY.busy=false}
+  if(changed){renderFavs();render($("cheer").textContent)}else renderShare();
+  if(SY.again)syncSoon(0);
+  return ok;
+}
+function renderShare(){
+  const B=$("shbtns");B.innerHTML="";
+  const btn=(t,f)=>{const b=document.createElement("button");b.textContent=t;b.onclick=f;B.appendChild(b);return b};
+  if(!SY.secret){
+    $("shmsg").textContent=SY.msg||"この家計簿をもう1人と一緒に使えるよ。どちらが入力しても、2人のスマホに出る。記録は鍵をかけて送るので、招待リンクを持っている人しか読めない。";
+    btn("👥 共有をはじめる",startShare);$("shlink").hidden=true;return;
+  }
+  $("shmsg").textContent=(SY.msg?SY.msg+" ":"")+"2人で共有中。"+(SY.last?"最後に同期 "+hm(SY.last):"");
+  btn("🔗 招待リンクを送る",sendInvite);
+  btn("🔄 今すぐ同期",()=>{$("shmsg").textContent="同期しているよ…";syncNow()});
+  btn(Date.now()<SY.stopArm?"本当にやめる？（もう一度タップ）":"共有をやめる",()=>{
+    if(Date.now()<SY.stopArm){SY.secret=null;SY.keys=null;SY.stopArm=0;SY.msg="この端末の共有をやめたよ（記録はこのスマホに残ってる）。";saveSync();$("shlink").hidden=true;renderShare();return}
+    SY.stopArm=Date.now()+5000;renderShare();setTimeout(()=>{if(SY.stopArm&&Date.now()>=SY.stopArm){SY.stopArm=0;renderShare()}},5100)});
+}
+async function startShare(){
+  SY.secret=newSecret();SY.keys=null;SY.msg="";$("shmsg").textContent="準備しているよ…";
+  if(await syncNow()){saveSync();SY.msg="共有をはじめたよ。「🔗 招待リンクを送る」で相手に送ってね。";renderShare()}
+  else{const m=SY.msg;SY.secret=null;SY.keys=null;saveSync();SY.msg=m;renderShare()}
+}
+async function joinShare(secret){
+  tab(1);
+  if(secret===SY.secret){$("cheer").textContent="もう共有の家計簿につながってるよ。";syncNow();return}
+  const prev={secret:SY.secret,last:SY.last};
+  SY.secret=secret;SY.keys=null;SY.last=0;SY.msg="";$("cheer").textContent="共有の家計簿につないでいるよ…";
+  if(await syncNow()){saveSync();$("cheer").textContent="共有の家計簿につながったよ。2人の記録がひとつになったよ。";renderShare()}
+  else{const m=SY.msg;SY.secret=prev.secret;SY.last=prev.last;SY.keys=null;SY.msg="";saveSync();$("cheer").textContent="つながらなかったよ。"+m+"もう一度リンクを開くか、入力欄に貼ってね。";renderShare()}
+}
+async function sendInvite(){
+  const url=inviteUrl(),L=$("shlink");L.value=url;L.hidden=false;
+  const text="ズボラ家計簿を一緒に使おう。このリンクを開いてね。iPhoneのホーム画面から使うときは、リンクをコピーしてアプリの入力欄に貼って「記録」。";
+  try{if(navigator.share){await navigator.share({title:"ズボラ家計簿",text,url});return}}catch(e){if(e&&e.name=="AbortError")return}
+  try{await navigator.clipboard.writeText(url);$("shmsg").textContent="招待リンクをコピーしたよ。LINEなどに貼って送ってね。"}
+  catch(e){L.focus();L.select();$("shmsg").textContent="下のリンクをコピーして送ってね。"}
+}
+$("shlink").onfocus=e=>e.target.select();
+// 招待リンクで開いたとき（#join=...）。リンクはアドレス欄から消しておく
+{const js=secretFromText(location.hash);if(js){history.replaceState(null,"",location.pathname+location.search);setTimeout(()=>joinShare(js),0)}}
+// アプリに戻ってきたとき・電波が戻ったときにも同期（短い間に何度も読みに行かない）
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&SY.secret&&(SY.dirty||Date.now()-SY.lastTry>20000))syncSoon(0)});
+window.addEventListener("online",()=>{if(SY.secret)syncSoon(0)});
+if(SY.secret)syncSoon(0);
 renderFavs();render();
 
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});

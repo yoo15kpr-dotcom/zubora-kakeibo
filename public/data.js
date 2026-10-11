@@ -11,9 +11,9 @@ export function exportData(S,now=new Date()){
 const MIN_TS=Date.UTC(2000,0,1),MAX_TS=Date.UTC(2100,0,1);
 const okTs=t=>isNum(t)&&t>=MIN_TS&&t<MAX_TS;
 const okMonth=m=>Number.isInteger(m)&&m>=2000*12&&m<2100*12;
-const okItem=i=>i&&(isNum(i.id)||isStr(i.id))&&okTs(i.ts)&&isNum(i.amount)&&i.amount>0&&isStr(i.text)&&isStr(i.cat);
-const okRecur=r=>r&&(isNum(r.id)||isStr(r.id))&&isStr(r.label)&&isNum(r.amount)&&r.amount>0&&isStr(r.cat)&&okMonth(r.start)&&((Number.isInteger(r.day)&&r.day>=1&&r.day<=31)||((r.step==7||r.step==14)&&okTs(r.anchor)));
-const okFav=f=>f&&isStr(f.l)&&isNum(f.a)&&f.a>0;
+export const okItem=i=>i&&(isNum(i.id)||isStr(i.id))&&okTs(i.ts)&&isNum(i.amount)&&i.amount>0&&isStr(i.text)&&isStr(i.cat);
+export const okRecur=r=>r&&(isNum(r.id)||isStr(r.id))&&isStr(r.label)&&isNum(r.amount)&&r.amount>0&&isStr(r.cat)&&okMonth(r.start)&&((Number.isInteger(r.day)&&r.day>=1&&r.day<=31)||((r.step==7||r.step==14)&&okTs(r.anchor)));
+export const okFav=f=>f&&isStr(f.l)&&isNum(f.a)&&f.a>0;
 
 // 今のデータに読み込んだデータを足す（同じ記録は増やさない）。目標金額は今の設定を残す
 export function importData(cur,text){

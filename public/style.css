@@ -79,3 +79,5 @@ nav button.on{color:var(--ok);font-weight:700}
 .bkdue{background:var(--bub)}
 .bkdue .acts{display:flex;gap:8px;margin-top:10px}
 .bkdue .btn{flex:1;min-height:40px}.bkdue .no{background:var(--bg);color:var(--ink)}
+.shmsg{font-size:14px;margin-top:6px}
+.shlink{width:100%;margin-top:10px;border:2px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 10px;font-size:16px;color:var(--sub)}

@@ -6,6 +6,7 @@ import { readFile } from "node:fs/promises";
 import { extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readReceipt, ReceiptError } from "./lib/receipt.js";
+import { createHandler } from "./api/sync.js";
 
 const PORT = Number(process.env.PORT) || 8787;
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "public");
@@ -78,6 +79,28 @@ async function api(req, res) {
   }
 }
 
+// 2人で共有（同期）: Vercel では Blob に置く。手元ではメモリに置く（再起動で消える。動作確認用）
+// SYNC_OFF=1 で「保存場所がまだない」状態を試せる
+const mem = new Map(); let memRev = 0;
+const memStore = {
+  configured: () => process.env.SYNC_OFF !== "1",
+  async get(p) { return mem.get(p) || null; },
+  async put(p, text, ifMatch) {
+    const o = mem.get(p);
+    if (ifMatch && (!o || o.etag !== ifMatch)) throw Object.assign(new Error("conflict"), { precondition: true });
+    const r = { body: text, etag: '"' + (++memRev) + '"' }; mem.set(p, r); return { etag: r.etag };
+  },
+  async del(p) { mem.delete(p); },
+};
+const syncHandler = createHandler(memStore);
+async function sync(req, res) {
+  const headers = Object.fromEntries(Object.entries(req.headers).filter(([, v]) => typeof v === "string"));
+  const body = req.method === "PUT" ? await readBody(req) : undefined;
+  const r = await syncHandler(new Request("http://localhost" + req.url, { method: req.method, headers, body }));
+  res.writeHead(r.status, Object.fromEntries(r.headers));
+  res.end(Buffer.from(await r.arrayBuffer()));
+}
+
 async function file(req, res) {
   if (req.method !== "GET" && req.method !== "HEAD") { res.writeHead(405); return res.end(); }
   let p = decodeURIComponent(new URL(req.url, "http://x").pathname);
@@ -95,6 +118,6 @@ async function file(req, res) {
 
 export const server = http.createServer((req, res) => {
   const path = new URL(req.url, "http://x").pathname;
-  (path === "/api/receipt" ? api : file)(req, res).catch(e => { console.error(e); if (!res.headersSent) { res.writeHead(500); res.end(); } });
+  (path === "/api/receipt" ? api : path === "/api/sync" ? sync : file)(req, res).catch(e => { console.error(e); if (!res.headersSent) { res.writeHead(500); res.end(); } });
 });
 if (process.argv[1] === fileURLToPath(import.meta.url)) server.listen(PORT, () => console.log(`ズボラ家計簿: http://localhost:${PORT}  (レシート読み取り: ${ENABLED ? "有効" : "無効 — ANTHROPIC_API_KEY 未設定"}${ENABLED && !ACCESS_KEY ? "／合言葉なし" : ""})`));

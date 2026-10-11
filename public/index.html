@@ -54,6 +54,10 @@
   <section class="card"><div class="sub">カテゴリ別（タップで内訳）</div><div id="cats"></div></section>
   <section class="card"><div class="row" style="align-items:center"><button class="x" id="cpm" aria-label="前の月">◀</button><div class="sub" id="calh">カレンダー（日をタップで絞り込み）</div><button class="x" id="cnm" aria-label="次の月">▶</button></div><div class="cal" id="cal"></div></section>
   <section class="card"><div class="sub" style="margin-bottom:4px" id="lh">記録一覧（タップで全文）</div><div id="list"></div></section>
+  <section class="card" id="share"><div class="sub">2人で共有</div>
+    <div class="shmsg" id="shmsg">この家計簿をもう1人と一緒に使えるよ。どちらが入力しても、2人のスマホに出る。</div>
+    <div class="chips" id="shbtns"></div>
+    <input class="shlink" id="shlink" readonly hidden aria-label="招待リンク"></section>
   <section class="card"><div class="sub">バックアップ（機種変更や念のために）</div>
     <div class="chips"><button id="bkout">⬇ 残しとく</button><button id="bkin">⬆ 読み込む</button></div>
     <input type="file" id="bkfile" accept="application/json,.json" hidden>

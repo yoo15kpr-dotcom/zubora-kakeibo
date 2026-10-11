@@ -5,7 +5,7 @@
 旧URL（GitHub Pages）: https://yoo15kpr-dotcom.github.io/zubora-kakeibo/ はアプリを止め、移転のお知らせページにしています（`gh-pages` ブランチ）。そのURLに記録が残っている端末では、お知らせページの「残しとく」で保存して新しいURLで読み込めます。
 
 話し言葉（音声または文字）をそのまま入力すると記録される、ズボラ向けの家計簿。
-目標金額との差と、ゆるい応援の言葉を表示します。データは端末の `localStorage`（キー `zubora_v1`）にだけ保存します。
+目標金額との差と、ゆるい応援の言葉を表示します。データは端末の `localStorage`（キー `zubora_v1`）に保存します。「2人で共有」を使うと、暗号化した記録を Vercel Blob にも置きます（下記）。
 
 ## 構成
 
@@ -15,10 +15,13 @@ public/            ブラウザで動く部分（静的ファイルだけでも�
   style.css
   app.js           画面・記録・集計
   parse.js         入力の解釈（amount / dateOf / split / normalize / cat）。DOM 非依存
+  data.js          バックアップの書き出し・読み込み。DOM 非依存
+  sync.js          2人で共有: まとめ方（足し算＋消した印）と暗号化。DOM 非依存
   sw.js            Service Worker（オフライン用）
   manifest.webmanifest, icons/
 lib/receipt.js     レシート画像 → {store, total, date, category}（Anthropic API）
-server.js          静的配信 + POST /api/receipt
+api/sync.js        2人で共有の保存場所（Vercel Function → Vercel Blob。暗号文だけを置く）
+server.js          静的配信 + POST /api/receipt + /api/sync（手元ではメモリに置く）
 test/              node:test の単体テスト
 ```
 
@@ -133,6 +136,21 @@ iPhone ではホーム画面に追加したアプリと Safari の保存領域�
 
 `public/` のファイルを変えたら `sw.js` の `CACHE` の値（`zubora-vN`）を上げると、古いキャッシュが確実に消えます（ネット優先で取得するので、上げなくてもオンライン時は新しい版が表示されます）。
 
-## 未実装
+## 2人で共有
 
-- 端末間の自動同期（手動の「残しとく」・「読み込む」で代用）
+今月画面の「2人で共有」→「👥 共有をはじめる」で、もう1人と同じ家計簿を使えます。
+
+- 「🔗 招待リンクを送る」で `https://zuborakakeibo.vercel.app/#join=<鍵>` を送り、相手が開くと参加します。iPhone でホーム画面のアイコンから使う人は、リンクを入力欄に貼って「記録」でも参加できます（Safari とアイコンで保存場所が別のため）。
+- 参加すると、相手の端末の記録も足し合わされてひとつになります。以後は、開いたとき・入力したとき（1.5秒まとめて）・アプリに戻ったとき・電波が戻ったときに同期します。
+- まとめ方は「足し算＋消した印（`del`）」。どちらの順番でまとめても同じ結果になるので、同時に入力しても消えません。消した記録・よく使うは相手からも消えます。目標金額はあとで変えたほうになります（`public/sync.js` の `mergeState`）。
+- 鍵（128ビットの乱数）は招待リンクの `#` 以降にだけ入り、サーバーには送りません。鍵から HKDF で「暗号化の鍵（AES-GCM）」と「合図（token）」を作り、サーバーには暗号文と合図だけを送ります。保存場所は合図の SHA-256 で決まるので、合図を知らない人は読めず、上書きもできません。**リンクを持っている人は全部読めるので、リンクは共有したい相手にだけ送ってください。**
+- 「共有をやめる」（2回タップ）は、その端末だけ共有をやめます。記録は端末に残ります。
+
+### 保存場所（Vercel Blob）の用意
+
+1. Vercel のプロジェクト → Storage → Create Storage → Blob → アクセスは **Private** を選んで作成し、このプロジェクトにつなぐ（Production にトークンを入れる）
+2. 環境変数（`BLOB_READ_WRITE_TOKEN` など）が入ったあとに一度公開し直す
+3. 無料プラン（Hobby）の上限: 保存 1GB・書き込み（put）2,000回/月・読み取り 10,000回/月。上限を超えても請求はなく、Blob が最大30日使えなくなるだけ（その間も各端末では使える）。公式: https://vercel.com/docs/vercel-blob/usage-and-pricing
+
+用意する前は「共有の保存場所がまだ用意されていないみたい」と表示され、共有は始まりません（`/api/sync` が 503）。手元では `SYNC_OFF=1 npm start` でこの状態を試せます。
+

@@ -1,4 +1,4 @@
-# Vercel では静的ファイル（public/）だけを公開する。サーバー版のコードは送らない
+# Vercel では静的ファイル（public/）と共有用の関数（api/）だけを公開する。手元用のサーバー（server.js・lib/）は送らない
 server.js
 lib/
 test/
