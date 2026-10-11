@@ -53,6 +53,14 @@ test("読んだあとに相手が書いていたら 412（上書きしない）"
   assert.equal((await h(req("PUT", T1, env, { "if-match": etag }))).status, 412, "古い ETag では書けない");
 });
 
+test("圧縮で弱い形（W/）になった ETag でも、読んだ版の上に書ける", async () => {
+  const h = createHandler(memStore());
+  await h(req("PUT", T1, env));
+  const etag = (await h(req("GET", T1))).headers.get("etag");
+  assert.equal((await h(req("PUT", T1, env, { "if-match": "W/" + etag }))).status, 200);
+  assert.equal((await h(req("PUT", T1, env, { "if-match": "W/" + etag }))).status, 412, "古い版はやはり書けない");
+});
+
 test("暗号文の形でないもの・大きすぎるものは置かない", async () => {
   const h = createHandler(memStore());
   assert.equal((await h(req("PUT", T1, "{oops"))).status, 400);

@@ -33,7 +33,9 @@ export function createHandler(store) {
         if (text.length > MAX_BODY) return reply(413, { error: "too_large" });
         let j; try { j = JSON.parse(text); } catch { return reply(400, { error: "bad_body" }); }
         if (!j || j.v !== 1 || typeof j.iv != "string" || typeof j.ct != "string") return reply(400, { error: "bad_body" });
-        const r = await store.put(path, text, request.headers.get("if-match") || undefined);
+        // Vercel は返事を圧縮するときに ETag を弱い形（W/"..."）に変えるので、W/ を外して比べる
+        const ifMatch = (request.headers.get("if-match") || "").replace(/^W\//, "") || undefined;
+        const r = await store.put(path, text, ifMatch);
         return reply(200, { ok: true }, { ETag: r.etag });
       }
       if (request.method == "DELETE") { await store.del(path); return reply(200, { ok: true }); }
