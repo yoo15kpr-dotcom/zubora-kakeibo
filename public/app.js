@@ -49,6 +49,7 @@ function render(msg){
 }
 let selDay=null,viewOff=0;
 const openIds=new Set(); // 記録一覧で全文を開いている記録（描き直しても開いたまま）
+const openCats=new Set(); // カテゴリ別で内訳を開いているカテゴリ（同上）
 function renderMonth(s){
   const minOff=Math.max(-60,earliestOffset(S));
   $("h2").textContent=s.y+"年"+(s.mo+1)+"月";
@@ -65,8 +66,18 @@ function renderMonth(s){
   const es=Object.entries(by).sort((a,b)=>b[1]-a[1]);
   if(!es.length)C.innerHTML='<div class="empty">まだ記録なし</div>';
   es.forEach(([k,v])=>{const r=document.createElement("div");r.className="crow";
+    r.setAttribute("role","button");r.tabIndex=0;
     r.innerHTML='<span></span><div class="bar"><i></i></div><b></b>';
-    r.children[0].textContent=k;r.querySelector("i").style.width=(v/s.spent*100)+"%";r.children[2].textContent=yen(v);C.appendChild(r)});
+    r.children[0].textContent=k;r.querySelector("i").style.width=(v/s.spent*100)+"%";r.children[2].textContent=yen(v);
+    // タップでこのカテゴリの記録（この月の全部・新しい順）をすぐ下に出す／もう一度タップで閉じる
+    const box=document.createElement("div");box.className="cdet";
+    s.items.filter(i=>i.cat==k).reverse().forEach(i=>{const d=new Date(i.ts),x=document.createElement("div");x.className="citem";
+      x.innerHTML='<span class="sub"></span><span class="t"></span><b></b>';
+      x.children[0].textContent=(d.getMonth()+1)+"/"+d.getDate();x.children[1].textContent=i.text;x.children[2].textContent=yen(i.amount);box.appendChild(x)});
+    const open=on=>{box.hidden=!on;r.classList.toggle("open",on);r.setAttribute("aria-expanded",on);on?openCats.add(k):openCats.delete(k)};
+    r.onclick=()=>open(box.hidden);
+    r.onkeydown=e=>{if(e.key=="Enter"||e.key==" "){e.preventDefault();open(box.hidden)}};
+    C.appendChild(r);C.appendChild(box);open(openCats.has(k))});
   const dv=Array(s.days).fill(0);s.items.forEach(i=>dv[new Date(i.ts).getDate()-1]+=i.amount);
   const mx=Math.max(1,...dv),K=v=>v>=10000?(v/10000).toFixed(1).replace(".0","")+"万":v.toLocaleString("ja-JP");
   const cal=$("cal");cal.innerHTML="";
