@@ -1,6 +1,8 @@
 // 2人で同じ家計簿を使うための保存場所（Vercel Blob の非公開ストア）。
 // 中身はブラウザで暗号化済み。ここに届くのは暗号文と「合図（token）」だけで、家計簿の中身は読めない。
 // 置き場所は token のハッシュで決まるので、token を知らない人は読むことも上書きすることもできない。
+// 保存場所: Vercel のプロジェクト → Storage で Blob（Private）を作ってつなぐと BLOB_READ_WRITE_TOKEN などが入る。
+// 環境変数は次の公開から効くので、つないだあとに一度公開し直すこと（それまでは 503 not_configured）。
 import { createHash } from "node:crypto";
 import { get, put, del, BlobPreconditionFailedError } from "@vercel/blob";
 
