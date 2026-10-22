@@ -1,4 +1,4 @@
-import { CATS, cat, amount, normalize, split, receiptFromText, hankaku } from "./parse.js";
+import { CATS, cat, amount, normalize, split, receiptFromText, hankaku, INCOME_CAT } from "./parse.js";
 import { exportData, importData, earliestOffset, earliestMonthKey, backupDue } from "./data.js";
 import { mergeState, canon, delKey, newSecret, secretFromText, keysFrom, seal, unseal } from "./sync.js";
 
@@ -16,16 +16,20 @@ const SY={secret:null,keys:null,last:0,lastTry:0,dirty:false,busy:false,again:fa
 try{const j=JSON.parse(localStorage.getItem(SYKEY));if(j&&j.secret){SY.secret=j.secret;SY.last=j.last||0}}catch(e){}
 const yen=n=>"¥"+Math.round(n).toLocaleString("ja-JP");
 const pick=a=>a[Math.floor(Math.random()*a.length)];
+// 入ったお金 − 使ったお金
+const netText=s=>"差し引き "+(s.income-s.spent<0?"−":"+")+yen(Math.abs(s.income-s.spent));
 function stats(off=0){
   const d=new Date(),t=new Date(d.getFullYear(),d.getMonth()+off,1),y=t.getFullYear(),mo=t.getMonth();
   const days=new Date(y,mo+1,0).getDate(),day=off==0?d.getDate():days;
   const items=S.items.filter(i=>{const x=new Date(i.ts);return x.getFullYear()==y&&x.getMonth()==mo});
   S.recur.forEach(r=>{if(r.step){const f=new Date(y,mo,1).getTime(),e=new Date(y,mo+1,1).getTime();
-    for(let t=new Date(r.anchor);t.getTime()<e;t=new Date(t.getFullYear(),t.getMonth(),t.getDate()+r.step,12))if(t.getTime()>=f)items.push({id:"r"+r.id+t.getTime(),ts:t.getTime(),text:r.label+(r.step==14?"（隔週）":"（毎週）"),amount:r.amount,cat:r.cat,rec:r.id});return}
-  if(y*12+mo>=r.start)items.push({id:"r"+r.id,ts:new Date(y,mo,Math.min(r.day,days),12).getTime(),text:r.label+"（毎月）",amount:r.amount,cat:r.cat,rec:r.id})});
+    for(let t=new Date(r.anchor);t.getTime()<e;t=new Date(t.getFullYear(),t.getMonth(),t.getDate()+r.step,12))if(t.getTime()>=f)items.push({id:"r"+r.id+t.getTime(),ts:t.getTime(),text:r.label+(r.step==14?"（隔週）":"（毎週）"),amount:r.amount,cat:r.cat,rec:r.id,in:r.in});return}
+  if(y*12+mo>=r.start)items.push({id:"r"+r.id,ts:new Date(y,mo,Math.min(r.day,days),12).getTime(),text:r.label+"（毎月）",amount:r.amount,cat:r.cat,rec:r.id,in:r.in})});
   items.sort((a,b)=>a.ts-b.ts);
-  const spent=items.reduce((a,i)=>a+i.amount,0);
-  return{y,mo,days,day,items,spent,left:S.goal-spent,off};
+  // all: 記録一覧用（使った・入った両方）。items: 使ったお金だけ（目標・カテゴリ・カレンダーはこちら）。ins: 入ったお金
+  const all=items,out=all.filter(i=>!i.in),ins=all.filter(i=>i.in);
+  const spent=out.reduce((a,i)=>a+i.amount,0),income=ins.reduce((a,i)=>a+i.amount,0);
+  return{y,mo,days,day,items:out,all,ins,spent,income,left:S.goal-spent,off};
 }
 function cheerText(s){
   if(!S.goal)return"目標を決めると、もっとゆるく応援できるよ。";
@@ -50,6 +54,7 @@ function render(msg){
   $("spent").textContent="使った額 "+yen(s.spent);
   const rem=s.days-s.day+1;
   $("perday").textContent=over?"":"1日 "+yen(Math.max(0,s.left)/rem)+" まで";
+  $("incrow").hidden=!s.ins.length;$("income").textContent="入ったお金 "+yen(s.income);$("net").textContent=netText(s);
   $("cheer").textContent=msg||cheerText(s);
   renderMonth(stats(viewOff));
   if(typeof renderBkDue=="function"){renderBkDue();renderNote()}
@@ -69,6 +74,7 @@ function renderMonth(s){
   $("mt").textContent=yen(s.spent);
   $("mc").textContent=s.items.length+"件";
   $("ma").textContent="1日平均 "+yen(s.spent/Math.max(1,s.day));
+  $("mincrow").hidden=!s.ins.length;$("minc").textContent="入ったお金 "+yen(s.income)+"（"+s.ins.length+"件）";$("mnet").textContent=netText(s);
   const by={};s.items.forEach(i=>by[i.cat]=(by[i.cat]||0)+i.amount);
   const C=$("cats");C.innerHTML="";
   const es=Object.entries(by).sort((a,b)=>b[1]-a[1]);
@@ -96,7 +102,7 @@ function renderMonth(s){
     if(v&&d!=selDay)c.style.background="color-mix(in srgb,var(--ok) "+Math.round(15+v/mx*45)+"%,var(--bg))";
     c.innerHTML="<span></span><small></small>";c.children[0].textContent=d;c.children[1].textContent=v?K(v):"";
     c.onclick=()=>{selDay=selDay==d?null:d;renderMonth(stats(viewOff))};cal.appendChild(c)});
-  const li=selDay?s.items.filter(i=>new Date(i.ts).getDate()==selDay):s.items;
+  const li=selDay?s.all.filter(i=>new Date(i.ts).getDate()==selDay):s.all;
   $("lh").textContent=selDay?(s.mo+1)+"月"+selDay+"日の記録（もう一度タップで全部）":"記録一覧（タップで全文）";
   const L=$("list");
   if(!li.length){L.innerHTML='<div class="empty">まだ記録なし。上に一言どうぞ。</div>'}
@@ -109,9 +115,9 @@ function renderMonth(s){
     const toggle=()=>{if(el.classList.contains("open"))open(false);else if(t.scrollWidth>t.clientWidth)open(true)};
     el.onclick=e=>{if(!e.target.closest("button"))toggle()};
     t.onkeydown=e=>{if(e.key=="Enter"||e.key==" "){e.preventDefault();toggle()}};
-    el.querySelector("b").textContent=yen(i.amount);
+    el.querySelector("b").textContent=(i.in?"+":"")+yen(i.amount);if(i.in)el.classList.add("inc");
     const st=el.querySelector(".st");
-    if(i.rec)st.style.visibility="hidden";else st.onclick=()=>{const l=i.text.replace(/ [\d,]+円$/,"");$("cheer").textContent=addFav(l,i.amount)?"「"+l+" "+i.amount.toLocaleString("ja-JP")+"円」をよく使うリストに入れたよ。":"もうリストに入ってるよ。"};
+    if(i.rec)st.style.visibility="hidden";else st.onclick=()=>{const l=i.text.replace(/ [\d,]+円$/,"");$("cheer").textContent=addFav(l,i.amount,i.in)?"「"+l+" "+i.amount.toLocaleString("ja-JP")+"円」をよく使うリストに入れたよ。":"もうリストに入ってるよ。"};
     el.querySelector(".x:last-child").onclick=()=>{if(i.rec){S.recur=S.recur.filter(r=>r.id!==i.rec);S.del[delKey.recur(i.rec)]=Date.now()}else{S.items=S.items.filter(z=>z.id!==i.id);S.del[delKey.item(i.id)]=Date.now()}save();render(i.rec?"毎月の登録をやめたよ。":"消しておいたよ。")};
     L.appendChild(el);if(openIds.has(i.id))open(true)})}
 }
@@ -288,19 +294,20 @@ function submit(t){
   if(/合計|お会計|御会計|ご請求/.test(t)&&(hankaku(t).match(/\d+/g)||[]).length>=3){const r=receiptFromText(t);if(r.total){$("txt").value="";showReceipt(r);return}}
   const list=split(normalize(t));
   if(!list.length){$("cheer").textContent="金額が見つからなかったよ。「ランチ800円」みたいに言ってみて。";return}
-  const d=new Date(),sk=d.getFullYear()*12+d.getMonth();let tot=0,rn=[],auto=[];
+  const d=new Date(),sk=d.getFullYear()*12+d.getMonth();let tot=0,totIn=0,nOut=0,nIn=0,rn=[],auto=[];
   list.forEach((z,i)=>{
+    const kc=z.inc?INCOME_CAT:cat(z.label),kin=z.inc?{in:1}:{};
     if(z.rec&&z.rec.step){const wd=z.rec.wd,A=new Date(d.getFullYear(),d.getMonth(),d.getDate()+(wd==null?0:(wd-d.getDay()+7)%7),12);
-      S.recur.push({id:Date.now()+i+Math.random(),label:z.label,amount:z.a,step:z.rec.step,anchor:A.getTime(),cat:cat(z.label),start:sk});
+      S.recur.push({id:Date.now()+i+Math.random(),label:z.label,amount:z.a,step:z.rec.step,anchor:A.getTime(),cat:kc,start:sk,...kin});
       rn.push((z.rec.step==14?"隔週":"毎週")+(wd==null?"":"日月火水木金土"[wd]+"曜")+" "+z.label+" "+yen(z.a))}
-    else if(z.rec){S.recur.push({id:Date.now()+i+Math.random(),label:z.label,amount:z.a,day:Math.min(31,z.rec.day),cat:cat(z.label),start:sk});rn.push("毎月"+z.rec.day+"日 "+z.label+" "+yen(z.a))}
-    else{tot+=z.a;const tx=z.label+" "+yen(z.a).slice(1)+"円",bf=S.items.filter(x=>x.text==tx).length;
-      S.items.push({id:Date.now()+i+Math.random(),ts:z.ts||Date.now(),text:tx,amount:z.a,cat:cat(z.label)});
-      if(bf==1&&addFav(z.label,z.a))auto.push(z.label+" "+yen(z.a))}
+    else if(z.rec){S.recur.push({id:Date.now()+i+Math.random(),label:z.label,amount:z.a,day:Math.min(31,z.rec.day),cat:kc,start:sk,...kin});rn.push("毎月"+z.rec.day+"日 "+z.label+" "+(z.inc?"+":"")+yen(z.a))}
+    else{const tx=z.label+" "+yen(z.a).slice(1)+"円",bf=S.items.filter(x=>x.text==tx).length;
+      if(z.inc){totIn+=z.a;nIn++}else{tot+=z.a;nOut++}
+      S.items.push({id:Date.now()+i+Math.random(),ts:z.ts||Date.now(),text:tx,amount:z.a,cat:kc,...kin});
+      if(bf==1&&addFav(z.label,z.a,z.inc))auto.push(z.label+" "+(z.inc?"+":"")+yen(z.a))}
   });
   save();$("txt").value="";
-  const n1=list.length-rn.length;
-  render((n1?(n1>1?n1+"件、":"")+yen(tot)+" 記録したよ。":"")+(rn.length?rn.join("、")+" を登録したよ。":"")+(auto.length?"「"+auto.join("、")+"」、よく使いそうだからリストに入れといたよ〜":cheerText(stats())));
+  render((nOut?(nOut>1?nOut+"件、":"")+yen(tot)+" 記録したよ。":"")+(nIn?(nIn>1?nIn+"件、":"")+"+"+yen(totIn)+" 入ったね。":"")+(rn.length?rn.join("、")+" を登録したよ。":"")+(auto.length?"「"+auto.join("、")+"」、よく使いそうだからリストに入れといたよ〜":cheerText(stats())));
 }
 $("add").onclick=()=>submit();
 // 入力欄は2行の textarea。改行キー（送信）で記録する。変換の確定中（229）と Shift+改行は記録しない
@@ -319,11 +326,12 @@ gi.addEventListener("keydown",e=>{if(e.isComposing)return;if(e.key==="Enter")goa
 gi.addEventListener("blur",()=>goalDone(true));
 
 let favEdit=false;
-function addFav(l,a){if(!l||!a||S.favs.some(f=>f.l==l&&f.a==a))return false;S.favs.push({l,a,t:Date.now()});save();renderFavs();return true}
+// inc: 入ったお金。チップを押したときも入ったお金として記録する
+function addFav(l,a,inc){if(!l||!a||S.favs.some(f=>f.l==l&&f.a==a))return false;S.favs.push({l,a,t:Date.now(),...(inc?{in:1}:{})});save();renderFavs();return true}
 function renderFavs(){
   const C=$("chips");C.innerHTML="";
-  S.favs.forEach((f,i)=>{const b=document.createElement("button");b.textContent=(favEdit?"× ":"")+f.l+" "+f.a.toLocaleString("ja-JP")+"円";
-    b.onclick=()=>{if(favEdit){S.favs.splice(i,1);S.del[delKey.fav(f.l,f.a)]=Date.now();save();renderFavs()}else submit(f.l+f.a+"円")};C.appendChild(b)});
+  S.favs.forEach((f,i)=>{const b=document.createElement("button");b.textContent=(favEdit?"× ":"")+(f.in?"＋":"")+f.l+" "+f.a.toLocaleString("ja-JP")+"円";
+    b.onclick=()=>{if(favEdit){S.favs.splice(i,1);S.del[delKey.fav(f.l,f.a)]=Date.now();save();renderFavs()}else submit((f.in?"+":"")+f.l+f.a+"円")};C.appendChild(b)});
   if(!S.favs.length)C.innerHTML='<span class="sub">まだ空っぽ。同じものを2回記録すると自動で入るよ（今月の記録一覧の☆でも入れられるよ）。</span>';
   $("favedit").textContent=favEdit?"✓ 完了":"✎ 編集";
 }

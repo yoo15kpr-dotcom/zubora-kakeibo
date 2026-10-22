@@ -3,6 +3,7 @@ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:en
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15201f;--card:#1f2e2d;--ink:#e6f0ee;--sub:#92aaa5;--ok:#58c2ab;--warn:#f08a98;--line:#2e4341;--bub:#3a3720}}
 :root[data-theme="dark"]{--bg:#15201f;--card:#1f2e2d;--ink:#e6f0ee;--sub:#92aaa5;--ok:#58c2ab;--warn:#f08a98;--line:#2e4341;--bub:#3a3720}
 *{box-sizing:border-box}
+[hidden]{display:none!important} /* display を指定した要素でも hidden で隠れるように */
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif;line-height:1.6}
 main{max-width:480px;margin:0 auto;padding:16px 16px 40px}
@@ -81,3 +82,6 @@ nav button.on{color:var(--ok);font-weight:700}
 .bkdue .btn{flex:1;min-height:40px}.bkdue .no{background:var(--bg);color:var(--ink)}
 .shmsg{font-size:14px;margin-top:6px}
 .shlink{width:100%;margin-top:10px;border:2px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 10px;font-size:16px;color:var(--sub)}
+/* 入ったお金: 記録一覧の金額を緑で「+¥」、合計の行も緑 */
+.item.inc b{color:var(--ok)}
+.inrow{margin-top:2px}.inrow span:first-child{color:var(--ok);font-weight:700}

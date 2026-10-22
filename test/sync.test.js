@@ -79,3 +79,10 @@ test("招待リンクから鍵を取り出す（リンクを貼った文章か�
   assert.equal(secretFromText("ランチ850円"), null);
   assert.equal(secretFromText("#join=abc"), null);
 });
+
+test("入ったお金の印（in）も2人の間でそのまま届く", () => {
+  const a = { ...A(), items: [...A().items, { ...item(4, 4, "給料 250,000円", 250000), cat: "収入", in: 1 }] };
+  const m = mergeState(B(), a);
+  assert.equal(m.items.find(i => i.id === 4).in, 1);
+  assert.equal(canon(mergeState(m, a)), canon(m));
+});

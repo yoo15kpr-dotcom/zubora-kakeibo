@@ -27,12 +27,13 @@
   <div class="big ok" id="left">—</div>
   <div class="bar"><i id="fill"></i><b id="pace"></b></div>
   <div class="row sub" style="margin-top:6px"><span id="spent"></span><span id="perday"></span></div>
+  <div class="row sub inrow" id="incrow" hidden><span id="income"></span><span id="net"></span></div>
   <div class="bubble" id="cheer">思ったこと、そのまま話しかけてね。</div>
 </section>
 
 <section class="card">
   <div class="inp">
-    <textarea id="txt" rows="2" placeholder="例：ランチ850円" autocomplete="off" enterkeyhint="send" aria-label="使ったお金（例：ランチ850円）"></textarea>
+    <textarea id="txt" rows="2" placeholder="例：ランチ850円／給料25万円" autocomplete="off" enterkeyhint="send" aria-label="使ったお金（例：ランチ850円）"></textarea>
     <div class="inpbtns">
       <button class="btn mic" id="mic" aria-label="音声入力">🎤</button>
       <button class="btn" id="add">記録</button>
@@ -50,7 +51,8 @@
 <div id="v2" hidden>
   <div class="row" style="align-items:center"><button class="x" id="pm" aria-label="前の月">◀</button><h1 id="h2" style="margin:4px 0 12px"></h1><button class="x" id="nm" aria-label="次の月">▶</button></div>
   <section class="card"><div class="sub" id="mtl">今月使った金額</div><div class="big" id="mt">—</div>
-    <div class="row sub"><span id="mc"></span><span id="ma"></span></div></section>
+    <div class="row sub"><span id="mc"></span><span id="ma"></span></div>
+    <div class="row sub inrow" id="mincrow" hidden><span id="minc"></span><span id="mnet"></span></div></section>
   <section class="card"><div class="sub">カテゴリ別（タップで内訳）</div><div id="cats"></div></section>
   <section class="card"><div class="row" style="align-items:center"><button class="x" id="cpm" aria-label="前の月">◀</button><div class="sub" id="calh">カレンダー（日をタップで絞り込み）</div><button class="x" id="cnm" aria-label="次の月">▶</button></div><div class="cal" id="cal"></div></section>
   <section class="card"><div class="sub" style="margin-bottom:4px" id="lh">記録一覧（タップで全文）</div><div id="list"></div></section>

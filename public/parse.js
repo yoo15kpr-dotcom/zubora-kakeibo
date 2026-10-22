@@ -5,6 +5,11 @@ export const CATS=[["食費",/ランチ|ご飯|ごはん|昼|朝|夜|夕|飯|カ
 ["趣味",/映画|本|ゲーム|漫画|マンガ|服|趣味|ライブ|課金|グッズ|買い物/],
 ["固定費",/家賃|電気|ガス|水道|通信|スマホ|サブスク|保険|ネット/]];
 export const cat=t=>{for(const[c,r]of CATS)if(r.test(t))return c;return"その他"};
+// 入ったお金（収入）。頭に「＋」を付けるか、次の言葉が入っていれば収入として記録する。
+// 「お小遣い」「お年玉」「仕送り」は払う側のこともあるので入れない（「お年玉もらった」なら「もらった」で収入）
+export const INCOME=/給料|給与|賞与|ボーナス|収入(?!印紙)|入金|もら[っうい]|貰|売上|売り上げ|売った|売れた|還付|返金|配当|当選|当たった|キャッシュバック|バイト代|給付金|手当(?!て)|入った|増えた/;
+export const INCOME_CAT="収入";
+export const isIncome=g=>/[＋+]/.test(g)||INCOME.test(g);
 export const hankaku=t=>t.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248));
 export function amount(t){
   t=hankaku(t).replace(/[,、，]/g,"");
@@ -33,14 +38,16 @@ export function dateOf(g,now=new Date()){
 }
 export function split(t,now=new Date()){
   const segs=(t.match(/[^円]*円(?:\s*(?:毎月\s*\d{0,2}\s*日?|(?:隔週|毎週)\s*(?:[月火水木金土日]曜日?)?))?|[^円]+$/g)||[]).map(x=>x.trim()).filter(Boolean);
-  const out=[];let last="",cts=null;
+  const out=[];let last="",lastIn="",cts=null;
   for(let g of segs){
+    const inc=isIncome(g);
     const dd=dateOf(g,now);if(dd.ts)cts=dd.ts;g=dd.rest;const rec=dd.rec||null;
     const a=amount(g);if(!a)continue;
-    let label=g.replace(/[０-９0-9,，、.]+|[万千]|円|えん/g," ").replace(/[\s　]+/g," ").trim();
+    let label=g.replace(/[＋+]/g," ").replace(/[０-９0-9,，、.]+|[万千]|円|えん/g," ").replace(/[\s　]+/g," ").trim();
     label=label.replace(/^[、,＋+\s]+/,"").replace(/^(と|や)(?=[゠-ヿ一-鿿])/,"").replace(/^(と|や)$/,"").replace(/[、,＋+\s]+$/,"").replace(/で$/,"").trim();
-    if(!label)label=last;else last=label;
-    out.push({a,label:label||"支出",ts:cts,rec});
+    // 名前がなければ直前の名前を引き継ぐ（使ったお金と入ったお金は別々に）
+    if(!label)label=inc?lastIn:last;else if(inc)lastIn=label;else last=label;
+    out.push({a,label:label||(inc?"収入":"支出"),ts:cts,rec,inc});
   }
   return out;
 }

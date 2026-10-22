@@ -97,3 +97,23 @@ test("カテゴリ判定", () => {
   assert.equal(cat("家賃"), "固定費");
   assert.equal(cat("美容院"), "その他");
 });
+
+test("入ったお金: 言葉か「＋」で収入になる。払う側のこともある言葉は支出のまま", () => {
+  const inc = t => split(normalize(t), NOW).map(({ a, label, inc }) => ({ a, label, inc }));
+  assert.deepEqual(inc("給料25万円"), [{ a: 250000, label: "給料", inc: true }]);
+  assert.deepEqual(inc("ランチ800円と給料25万円"), [{ a: 800, label: "ランチ", inc: false }, { a: 250000, label: "給料", inc: true }]);
+  assert.deepEqual(inc("+5000円"), [{ a: 5000, label: "収入", inc: true }]);
+  assert.deepEqual(inc("＋3000"), [{ a: 3000, label: "収入", inc: true }]);
+  assert.deepEqual(inc("コーヒー300円と+5000円"), [{ a: 300, label: "コーヒー", inc: false }, { a: 5000, label: "収入", inc: true }]);
+  assert.deepEqual(inc("+バイト5000円"), [{ a: 5000, label: "バイト", inc: true }]);
+  assert.deepEqual(inc("メルカリで売った2000円"), [{ a: 2000, label: "メルカリで売った", inc: true }]);
+  assert.deepEqual(inc("お年玉もらった1万円"), [{ a: 10000, label: "お年玉もらった", inc: true }]);
+  for (const t of ["収入印紙200円", "子どものお小遣い1000円", "給食費4500円", "お年玉1万円"]) assert.equal(inc(t)[0].inc, false, t);
+});
+
+test("入ったお金: 毎月の給料も登録できる", () => {
+  const [z] = split(normalize("毎月25日 給料25万円"), NOW);
+  assert.equal(z.inc, true);
+  assert.deepEqual(z.rec, { day: 25 });
+  assert.equal(z.label, "給料");
+});
