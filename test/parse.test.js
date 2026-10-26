@@ -117,3 +117,9 @@ test("入ったお金: 毎月の給料も登録できる", () => {
   assert.deepEqual(z.rec, { day: 25 });
   assert.equal(z.label, "給料");
 });
+
+test("入ったお金: 給料以外の言葉でも入る。似た言葉の支出はそのまま", () => {
+  const kind = t => split(normalize(t), NOW).map(z => z.inc);
+  for (const t of ["パート代8万円", "パート8万円", "副業3万円", "報酬5000円", "謝礼3000円", "振り込まれた2万円", "返金が返ってきた800円", "プラス5000円", "臨時収入1万円", "ボーナス30万円", "もらえた1000円"]) assert.deepEqual(kind(t), [true], t);
+  for (const t of ["パートナーにプレゼント3000円", "振込手数料220円", "プラスチック容器300円", "ランチ800円"]) assert.deepEqual(kind(t), [false], t);
+});
